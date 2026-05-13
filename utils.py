@@ -7,23 +7,26 @@ load_dotenv()
 # Configuration
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 CRICKET_API_KEY = os.getenv("CRICKET_API_KEY")
-GIPHY_API_KEY = os.getenv("GIPHY_API_KEY")
 
-# RCB/Bengaluru Theme Colors
+# APL / IPL Dark Mode Theme Colors
 THEME = {
-    "primary": "#E21836",    # RCB Red
-    "secondary": "#DAB14F",  # Gold
-    "background": "#000000", # Black
-    "text": "#FFFFFF",       # White
+    "background": "#0B172A", # Deep Navy
+    "surface": "#1E293B",    # Slightly lighter navy for cards
+    "primary": "#00F0FF",    # Neon Blue
+    "secondary": "#FFD700",  # Gold
+    "text": "#F8FAFC",       # Off-White
+    "text_muted": "#94A3B8", # Slate
+    "danger": "#EF4444",     # Neon Red (Wickets/Tension)
+    "success": "#10B981",    # Neon Green
     "gauge_bar": "rgba(0,0,0,0)",
-    "gauge_bg": "#111111",
-    "gauge_border": "#DAB14F",
+    "gauge_bg": "#1E293B",
+    "gauge_border": "#00F0FF",
     "gauge_steps": [
-        {'range': [0, 5], 'color': "#2ecc71"},   # Green (Calm)
-        {'range': [5, 8], 'color': "#DAB14F"},   # Gold (Tense)
-        {'range': [8, 10], 'color': "#E21836"}   # Red (Hype/Danger)
+        {'range': [0, 5], 'color': "#10B981"},   # Green
+        {'range': [5, 8], 'color': "#FFD700"},   # Gold
+        {'range': [8, 10], 'color': "#EF4444"}   # Red
     ],
-    "line_color": "#E21836"
+    "line_color": "#00F0FF"
 }
 
 def validate_config():

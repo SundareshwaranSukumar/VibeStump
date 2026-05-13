@@ -1,25 +1,42 @@
-# 🏏 VibeStump: Agentic Fan-Manager
+# 🏏 Agentic Premier League (APL): VibeStump Experience
 
-VibeStump is a high-performance, agentic Streamlit application designed to analyze live cricket commentary and manage fan emotions in real-time. It uses **Google Gemini** as the reasoning engine to serve as a "Psychologist," evaluating the mood and tension of the match, and an "Executor" agent that fetches dynamic visual interventions (memes/GIFs) to manage fan hype.
+Welcome to the ultimate **Agentic Premier League (APL)** experience. VibeStump has been completely overhauled to feature a stunning IPL Dark Mode UI and a sophisticated Multi-Agent architecture.
 
-## 🚀 Project Overview
-- **The Problem**: Fans experience extreme emotional volatility during live matches.
-- **The Solution**: An agentic loop that reads live match commentary, structures the emotional data, and intervenes with perfectly timed, context-aware memes to manage tension.
-- **Theme**: Bengaluru / RCB (Red, Gold, Black).
+## 🚀 The Multi-Agent Architecture
 
-## 🏗️ Architecture
-- `app.py`: Streamlit UI, visual layout, and auto-refresh loop.
-- `agents.py`: **The Psychologist** (Gemini integration with Pydantic structured outputs).
-- `tools.py`: **The Scout** (Live Cricket API / Simulation Fallback) and **The Executor** (Giphy API / Meme fallback).
-- `utils.py`: Environment configuration and theme management.
+VibeStump now runs on an autonomous loop powered by three specialized AI agents interacting with real-time data:
+
+1. **🔭 The Scout Agent (`tools.py`)**: 
+   - Responsible for data ingestion. It fetches live commentary and calculates the real-time scorecard (Runs, Wickets, Overs, Run Rate).
+   - *Demo Mode Capability*: If the external API rate-limits, the Scout seamlessly transitions to a simulated high-tension T20 final over so your demo never crashes.
+
+2. **🧠 The Psychologist Agent (`agents.py`)**:
+   - Powered by Gemini 3 Flash. It processes the Scout's commentary stream and outputs a structured Pydantic schema detailing the crowd's `vibe_score` and `tension_index`.
+   - It also flags "Critical Events" (e.g., Wickets, Sixes) and commands the Executor agent.
+
+3. **📚 The Historian Agent (`agents.py`) [NEW!]**:
+   - Sleeps until the Psychologist flags a critical event.
+   - Once awakened, it pulls past statistical context (simulated via database) and uses Gemini to dynamically generate fascinating historical comparisons (e.g., comparing a current six to Chris Gayle's historical stats).
+
+4. **🎬 The Executor Agent (`tools.py`)**:
+   - Takes the emotional directives from the Psychologist and instantly deploys a highly relevant visual intervention (GIF/Meme) to the UI.
+
+## 🎨 UI & Theming
+
+The UI has been redesigned into a responsive 3-column layout featuring an "IPL Dark Mode":
+- **Deep Navy Background** (`#0B172A`) with Neon Blue and Gold accents.
+- **Left Sidebar**: The APL Tournament Hub showing fixtures and agent statuses.
+- **Top Header**: The real-time Live Scoreboard.
+- **Center Feed**: The live streaming commentary and the Plotly Tension Gauge.
+- **Right Action Column**: The dedicated space for Agent Interventions (Memes and Historian Insights).
 
 ## 📋 Prerequisites
 - Python 3.11+
 - Docker (for containerization)
 - Google Cloud CLI (for deployment)
-- API Keys (Gemini, optionally RapidAPI Cricbuzz and Giphy)
+- API Keys: `GEMINI_API_KEY`
 
-## 💻 Local Setup
+## 💻 Local Setup & Execution
 
 1. **Clone the repository and navigate to the directory:**
    ```bash
@@ -31,7 +48,7 @@ VibeStump is a high-performance, agentic Streamlit application designed to analy
    ```bash
    cp .env.example .env
    ```
-   *Edit `.env` and add your `GEMINI_API_KEY`. (If Cricket/Giphy keys are omitted, the app gracefully switches to Simulation Mode).*
+   *Edit `.env` and add your `GEMINI_API_KEY`.*
 
 3. **Install Dependencies:**
    ```bash
@@ -42,10 +59,11 @@ VibeStump is a high-performance, agentic Streamlit application designed to analy
    ```bash
    streamlit run app.py
    ```
+   *Pro-Tip: Toggle "Demo Mode" in the sidebar to witness the simulated final over and see the Historian Agent in action!*
 
 ## ☁️ Deployment Guide (Google Cloud Run)
 
-This project is Dockerized and optimized for Google Cloud Run's serverless architecture, scaling instantly as match viewership spikes.
+This project is Dockerized and optimized for Google Cloud Run's serverless architecture.
 
 1. **Authenticate with Google Cloud:**
    ```bash
@@ -58,7 +76,6 @@ This project is Dockerized and optimized for Google Cloud Run's serverless archi
    ```
 
 3. **Deploy from Source:**
-   Run the following command. Note that you must pass your environment variables securely to Cloud Run.
    ```bash
    gcloud run deploy vibestump \
      --source . \
@@ -67,8 +84,4 @@ This project is Dockerized and optimized for Google Cloud Run's serverless archi
      --allow-unauthenticated
    ```
 
-4. **Access the App:**
-   Click the URL provided in the terminal output to view your live, highly-available application!
-
-## ⚡ Performance
-The agentic loop is optimized to have a latency of **under 3 seconds** between fetching a live ball and displaying the agent intervention, utilizing Gemini Flash and direct API requests.
+4. **Access the App:** Click the provided URL to view your live APL Hub!
