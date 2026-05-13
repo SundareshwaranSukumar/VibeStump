@@ -1,8 +1,8 @@
 'use client';
 
+import ScoreGraph from './ScoreGraph';
 import TensionGauge from './TensionGauge';
-import VibeTrend from './VibeTrend';
-import PitchMap from './PitchMap';
+import { useVibeStore } from '@/lib/store';
 
 interface Analysis {
   tension_index: number;
@@ -18,6 +18,14 @@ export default function MatchFeed({
   commentary: string;
   analysis: Analysis | null;
 }) {
+  const { vibeHistory } = useVibeStore();
+  
+  // Convert vibeHistory to runs vs overs for the graph
+  const graphData = vibeHistory.map((v, idx) => ({
+    over: parseFloat(v.score.overs) || idx,
+    runs: v.score.runs
+  })).slice(-15); // Show last 15 data points
+
   const eventColor =
     analysis?.event_type === 'WICKET' ? '#EF4444' :
       analysis?.event_type === 'SIX' ? '#10B981' :
@@ -40,19 +48,10 @@ export default function MatchFeed({
             </span>
           )}
         </div>
-        <p className="text-lg leading-relaxed"
-          style={{ borderLeft: `3px solid ${eventColor}`, paddingLeft: '16px' }}>
+        <p className="text-xl font-bold leading-relaxed"
+          style={{ borderLeft: `5px solid ${eventColor}`, paddingLeft: '20px' }}>
           {commentary || 'Waiting for match data...'}
         </p>
-      </div>
-
-      {/* Pitch Map */}
-      <div className="glass glow-border p-4">
-        <h3 className="text-xs font-bold uppercase tracking-wider mb-3"
-          style={{ color: 'rgb(var(--color-secondary))' }}>
-          📍 Ball Tracking Simulator
-        </h3>
-        <PitchMap />
       </div>
 
       {/* Charts Row */}
@@ -66,11 +65,11 @@ export default function MatchFeed({
         </div>
 
         <div className="glass glow-border p-4">
-          <h3 className="text-xs font-bold uppercase tracking-wider mb-3"
+          <h3 className="text-xs font-bold uppercase tracking-wider mb-1"
             style={{ color: 'rgb(var(--color-secondary))' }}>
-            📈 Emotional Rollercoaster
+            📈 Run Progression (Runs vs Overs)
           </h3>
-          <VibeTrend />
+          <ScoreGraph data={graphData} />
         </div>
       </div>
     </div>

@@ -10,8 +10,8 @@ class SoundManager {
     if (this.initialized || typeof window === 'undefined') return;
     try {
       this.wicketSound = new Audio('/sounds/wicket_faaaah.mp3');
-      this.boundarySound = new Audio('/sounds/boundary.mp3');
-      // Using a remote file if local isn't present
+      // Remote fallback for boundary sound to avoid 404
+      this.boundarySound = new Audio('https://actions.google.com/sounds/v1/sports/football_kick_off.ogg'); 
       this.faahSound = new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg');
       this.initialized = true;
     } catch (e) {

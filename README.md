@@ -95,4 +95,7 @@ Without optional keys, the app uses Gemini Simulation data and fallback videos. 
 | **Search-Enabled Chatbot** | Ask Gemini live questions with the Google Search Tool directly in the UI. |
 | **Dynamic Audio Sync** | Built-in `SoundManager` plays triggers like "Faah" when wickets fall. |
 | **Database Match Logging** | Scout Agent permanently stores internet scraped match data in an SQLite Database. |
-| **Dynamic Team Theming** | 10 IPL teams. Instant CSS variable shifts. |
+---
+
+© 2026 Sundareshwaran Sukumar. All rights reserved. 
+This project is proprietary and built for high-fidelity agentic sports broadcasting.

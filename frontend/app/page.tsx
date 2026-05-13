@@ -101,6 +101,16 @@ export default function Home() {
 
       <LiveScoreTicker score={score} />
 
+      {/* Main Title Header */}
+      <div className="px-6 pt-4 flex justify-center">
+        <div className="relative group">
+          <h1 className="text-4xl md:text-5xl font-black italic tracking-tighter uppercase text-center glow-text transform -skew-x-6">
+            VibeStump: <span className="text-[rgb(var(--color-primary))]">Agentic Premier League</span>
+          </h1>
+          <div className="h-1 w-full bg-gradient-to-r from-transparent via-[rgb(var(--color-primary))] to-transparent mt-1 rounded-full opacity-50 group-hover:opacity-100 transition-opacity" />
+        </div>
+      </div>
+
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-[300px_1fr_360px] gap-6 p-6">
         {/* Left Sidebar: Tournament & Gamification */}
         <aside className="hidden lg:flex flex-col gap-4">
@@ -120,7 +130,11 @@ export default function Home() {
       </div>
 
       <OracleChat />
-      <TeamSelector />
+      
+      {/* Copyright Footer */}
+      <div className="absolute bottom-2 left-0 right-0 text-center text-[10px] tracking-widest text-white/40 z-[9999] pointer-events-none drop-shadow-md">
+        © 2026 Sundareshwaran Sukumar. All rights reserved.
+      </div>
     </div>
   );
 }

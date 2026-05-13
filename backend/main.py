@@ -65,10 +65,14 @@ scout = ScoutAgent()
 # ── Request / Response Models ────────────────────────────────────────
 class AnalyzeRequest(BaseModel):
     commentary: str
+    team: str = "RCB"
+    batting: str = "Home Team"
+    bowling: str = "Away Team"
 
 class HistorianRequest(BaseModel):
     event_type: str
     context: str
+    match_title: str = "IPL Match"
 
 
 # ── Routes ───────────────────────────────────────────────────────────
@@ -99,7 +103,12 @@ async def get_commentary(ball: int = 0, demo: bool = True, match_id: str = None)
 @app.post("/api/analyze")
 async def analyze(req: AnalyzeRequest):
     """Runs the Psychologist Agent on commentary."""
-    result = analyze_commentary(req.commentary)
+    result = analyze_commentary(
+        req.commentary, 
+        team=req.team, 
+        batting=req.batting, 
+        bowling=req.bowling
+    )
     
     # Dynamically fetch meme using Tenor API
     from tools import fetch_meme
@@ -113,7 +122,7 @@ async def analyze(req: AnalyzeRequest):
 @app.post("/api/historian")
 async def historian(req: HistorianRequest):
     """Runs the Historian Agent for a critical event."""
-    insight = generate_historical_insight(req.event_type, req.context)
+    insight = generate_historical_insight(req.event_type, req.context, match_title=req.match_title)
     return {"insight": insight}
 
 
@@ -135,9 +144,24 @@ async def diversion_netflix():
     """Mock Netflix streaming API."""
     return {"message": mock_netflix_api()}
 
+@app.get("/api/points-table")
+async def points_table():
+    """Returns the IPL Points Table."""
+    from tools import get_points_table
+    return await get_points_table()
+
+
+@app.get("/api/team-info/{team_code}")
+async def team_info(team_code: str):
+    """Returns detailed info for a specific team."""
+    from tools import get_team_info
+    return get_team_info(team_code)
+
+
 class OracleRequest(BaseModel):
     commentary: str
     team: str
+
 
 @app.post("/api/oracle")
 async def oracle(req: OracleRequest):
@@ -146,9 +170,11 @@ async def oracle(req: OracleRequest):
     result = analyze_oracle(req.commentary, req.team)
     return result.model_dump()
 
+
 class ChatRequest(BaseModel):
     message: str
     history: list
+
 
 @app.post("/api/chat")
 async def chat(req: ChatRequest):

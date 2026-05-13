@@ -6,10 +6,10 @@ import { useVibeStore } from '@/lib/store';
 import { useEffect, useState } from 'react';
 
 const TEAM_VIDEOS: Record<string, string> = {
-  RCB: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', // Placeholder
-  CSK: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-  KKR: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-  MI:  'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+  RCB: 'https://www.youtube.com/watch?v=v29Y-V0-I-s', 
+  CSK: 'https://www.youtube.com/watch?v=H8-fCPrZ4dI',
+  KKR: 'https://www.youtube.com/watch?v=3j0XmZJk_uM',
+  MI:  'https://www.youtube.com/watch?v=H8-fCPrZ4dI',
 };
 
 export default function BackgroundAmbience() {

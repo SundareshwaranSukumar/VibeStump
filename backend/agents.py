@@ -38,11 +38,8 @@ class HistorianResult(BaseModel):
 
 # ── Psychologist ─────────────────────────────────────────────────────
 _PSYCH_PROMPT = """You are the Psychologist Agent for VibeStump, an IPL second-screen fan platform.
-Today is Match 57: RCB vs KKR at M. Chinnaswamy Stadium, Bengaluru, May 13, 2026.
-RCB are the favorites this season, sitting 2nd on the table. KKR, the 2024 champions, are fighting for a playoff spot.
-
-Analyze this ball-by-ball commentary and determine:
-1. vibe_score (-10 devastation to +10 euphoria) from an RCB fan's perspective
+Analyze this ball-by-ball commentary between {batting} and {bowling} and determine:
+1. vibe_score (-10 devastation to +10 euphoria) from a {selectedTeam} fan's perspective
 2. tension_index (0 calm to 10 extreme)
 3. A short GIF search query reflecting the mood
 4. fallback_mood (happy | sad | tense | angry | hype)
@@ -53,13 +50,18 @@ Analyze this ball-by-ball commentary and determine:
 Commentary: {commentary}"""
 
 
-def analyze_commentary(commentary: str) -> AnalysisResult:
+def analyze_commentary(commentary: str, team: str = "RCB", batting: str = "Home", bowling: str = "Away") -> AnalysisResult:
     if not _client:
         return _offline_psychologist(commentary)
     try:
         resp = _client.models.generate_content(
             model=_MODEL,
-            contents=_PSYCH_PROMPT.format(commentary=commentary),
+            contents=_PSYCH_PROMPT.format(
+                selectedTeam=team, 
+                commentary=commentary,
+                batting=batting,
+                bowling=bowling
+            ),
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=AnalysisResult,
@@ -103,29 +105,25 @@ def _offline_psychologist(commentary: str) -> AnalysisResult:
 
 
 # ── Historian ────────────────────────────────────────────────────────
-_HIST_PROMPT = """You are the Historian Agent for VibeStump. Today is May 13, 2026 — Match 57: RCB vs KKR.
-
-Key rivalry context:
-- KKR won IPL 2024 under Shreyas Iyer, beating SRH in the final
-- RCB made a miracle run to the 2024 playoffs from 10th place
-- In IPL 2026, RCB are 2nd on the table with Kohli averaging 52 this season
-- Kohli's career SR against Narine in powerplay: 98.4
-- Sunil Narine has taken 14 wickets against RCB across all IPL seasons
-- The Chinnaswamy Stadium has the highest average first-innings score (185) in IPL 2026
+_HIST_PROMPT = """You are the Historian Agent for VibeStump. Today is May 13, 2026.
+Match: {match_title}
 
 A **{event_type}** just occurred. Context from our stats database:
 "{context_data}"
 
 Write a fascinating 2-3 sentence insight comparing this moment to IPL history. Be dramatic, specific with numbers, and engaging."""
 
-
-def generate_historical_insight(event_type: str, context_data: str) -> str:
+def generate_historical_insight(event_type: str, context_data: str, match_title: str = "IPL Match") -> str:
     if not _client:
         return f"📚 {context_data}"
     try:
         resp = _client.models.generate_content(
             model=_MODEL,
-            contents=_HIST_PROMPT.format(event_type=event_type, context_data=context_data),
+            contents=_HIST_PROMPT.format(
+                event_type=event_type, 
+                context_data=context_data,
+                match_title=match_title
+            ),
             config=types.GenerateContentConfig(
                 response_mime_type="application/json",
                 response_schema=HistorianResult,

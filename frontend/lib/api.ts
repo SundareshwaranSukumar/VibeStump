@@ -59,3 +59,13 @@ export async function diversionNetflix() {
   const res = await fetch(`${BASE}/api/diversion/netflix`, { method: 'POST' });
   return res.json();
 }
+
+export async function fetchPointsTable() {
+  const res = await fetch(`${BASE}/api/points-table`);
+  return res.json();
+}
+
+export async function fetchTeamInfo(teamCode: string) {
+  const res = await fetch(`${BASE}/api/team-info/${teamCode}`);
+  return res.json();
+}

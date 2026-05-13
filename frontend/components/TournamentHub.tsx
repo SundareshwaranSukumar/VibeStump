@@ -6,11 +6,12 @@ import { fetchMatches, fetchHighlights } from '@/lib/api';
 
 export default function TournamentHub() {
   const { demoMode, toggleDemo, resetMatch, ballCount, selectedMatchId, setSelectedMatchId } = useVibeStore();
-  const [matches, setMatches] = useState<any[]>([]);
-  const [highlights, setHighlights] = useState<any[]>([]);
+  const [pointsTable, setPointsTable] = useState<any[]>([]);
+  const [selectedTeamInfo, setSelectedTeamInfo] = useState<any | null>(null);
 
   useEffect(() => {
     fetchMatches().then(setMatches).catch(console.error);
+    fetch('/api/points-table').then(res => res.json()).then(setPointsTable).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -22,54 +23,135 @@ export default function TournamentHub() {
     }
   }, [selectedMatchId, matches]);
 
+  const handleTeamClick = async (teamCode: string) => {
+    try {
+      const info = await (await fetch(`/api/team-info/${teamCode}`)).json();
+      setSelectedTeamInfo({ code: teamCode, ...info });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const teams = [
+    { code: 'RCB', name: 'Bengaluru' },
+    { code: 'CSK', name: 'Chennai' },
+    { code: 'KKR', name: 'Kolkata' },
+    { code: 'MI', name: 'Mumbai' },
+    { code: 'SRH', name: 'Hyderabad' },
+    { code: 'GT', name: 'Gujarat' },
+    { code: 'LSG', name: 'Lucknow' },
+    { code: 'DC', name: 'Delhi' },
+  ];
+
   return (
     <div className="space-y-4">
       {/* Gamification (Fan Points & Oracle) */}
       <div className="glass glow-border p-4 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-24 h-24 bg-[rgb(var(--color-primary))] opacity-10 blur-2xl rounded-full" />
-
         <div className="flex justify-between items-end mb-4">
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-widest text-white/50 mb-1">
-              Fan Points
-            </h3>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-white/50 mb-1">Fan Points</h3>
             <div className="text-4xl font-black italic tracking-tighter glow-text">
               {useVibeStore().fanPoints}
             </div>
           </div>
           <div className="text-2xl">🔥</div>
         </div>
+      </div>
 
-        <div className="border-t border-white/10 pt-4 mt-2">
-          <h4 className="text-xs font-bold uppercase tracking-wider mb-2 text-white/80">
-            Oracle Prediction
-          </h4>
-          <p className="text-[10px] text-white/50 mb-3">
-            Predict the next ball. Win 100 points!
-          </p>
-
-          <div className="grid grid-cols-2 gap-2">
-            {['Hype', 'High Tension', 'Calm', 'Wicket'].map(pred => {
-              const currentPrediction = useVibeStore().currentPrediction;
-              const setPrediction = useVibeStore().setPrediction;
-              const isActive = currentPrediction === pred;
-
-              return (
-                <button
-                  key={pred}
-                  onClick={() => setPrediction(pred)}
-                  className={`py-1.5 px-2 text-[10px] font-bold uppercase tracking-wider rounded-md border transition-all ${isActive
-                      ? 'bg-[rgb(var(--color-primary))] text-black border-[rgb(var(--color-primary))] shadow-[0_0_10px_rgba(var(--color-primary),0.5)] scale-105'
-                      : 'bg-black/40 text-white/60 border-white/10 hover:border-white/30'
-                    }`}
-                >
-                  {pred}
-                </button>
-              );
-            })}
+      {/* IPL Points Table */}
+      <div className="glass glow-border p-4">
+        <h3 className="text-sm font-bold uppercase tracking-widest mb-3 flex items-center gap-2 text-[rgb(var(--color-primary))]">
+          <span className="text-lg">🏆</span> IPL Points Table
+        </h3>
+        <div className="text-[10px] w-full">
+          <div className="grid grid-cols-5 font-bold text-white/40 mb-2 border-b border-white/5 pb-1 uppercase">
+            <div className="col-span-2">Team</div>
+            <div className="text-center">P</div>
+            <div className="text-center">W</div>
+            <div className="text-center">Pts</div>
+          </div>
+          <div className="space-y-2 max-h-[160px] overflow-y-auto custom-scrollbar">
+            {pointsTable.map((t, idx) => (
+              <div key={idx} className="grid grid-cols-5 items-center hover:bg-white/5 p-1 rounded transition-colors">
+                <div className="col-span-2 flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-white/10 flex items-center justify-center p-0.5">
+                    <img src={getLogoForTeamName(t.team)} className="w-full h-full object-contain" />
+                  </div>
+                  <span className="font-bold">{t.team}</span>
+                </div>
+                <div className="text-center text-white/60">{t.played}</div>
+                <div className="text-center text-white/60">{t.won}</div>
+                <div className="text-center font-black text-[rgb(var(--color-primary))]">{t.pts}</div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
+
+      {/* IPL Team Gallery */}
+      <div className="glass glow-border p-4">
+        <h3 className="text-sm font-bold uppercase tracking-widest mb-3 flex items-center gap-2 text-[rgb(var(--color-secondary))]">
+          <span className="text-lg">🛡️</span> IPL Teams
+        </h3>
+        <div className="grid grid-cols-4 gap-2">
+          {teams.map((t) => (
+            <button 
+              key={t.code}
+              onClick={() => handleTeamClick(t.code)}
+              className="group flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-white/5 transition-all"
+            >
+              <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 p-1.5 group-hover:scale-110 group-hover:border-[rgb(var(--color-primary))] transition-transform">
+                <img src={getLogoForTeamName(t.code)} alt={t.name} className="w-full h-full object-contain" />
+              </div>
+              <span className="text-[8px] font-bold uppercase text-white/40 group-hover:text-white">{t.code}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Team Details Modal/Overlay */}
+      {selectedTeamInfo && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 backdrop-blur-sm bg-black/60">
+          <div className="glass glow-border p-6 max-w-md w-full relative animate-in fade-in zoom-in duration-300">
+            <button 
+              onClick={() => setSelectedTeamInfo(null)}
+              className="absolute top-4 right-4 text-white/40 hover:text-white"
+            >✕</button>
+            
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-16 h-16 rounded-full bg-white/10 p-3">
+                <img src={getLogoForTeamName(selectedTeamInfo.code)} className="w-full h-full object-contain" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-black italic uppercase tracking-tighter glow-text">
+                  {selectedTeamInfo.code} Details
+                </h2>
+                <p className="text-xs text-white/40 uppercase tracking-widest">Coach: {selectedTeamInfo.coach}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-[10px] font-bold text-[rgb(var(--color-primary))] uppercase mb-2">Upcoming Matches</h4>
+                <div className="space-y-1">
+                  {selectedTeamInfo.upcoming.map((m, i) => (
+                    <div key={i} className="text-sm bg-white/5 p-2 rounded border border-white/5">{m}</div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h4 className="text-[10px] font-bold text-[rgb(var(--color-secondary))] uppercase mb-2">Previous Results</h4>
+                <div className="space-y-1">
+                  {selectedTeamInfo.previous.map((m, i) => (
+                    <div key={i} className="text-sm bg-white/5 p-2 rounded border border-white/5 opacity-70">{m}</div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Controls */}
       <div className="glass p-3 border border-white/10">
@@ -91,77 +173,6 @@ export default function TournamentHub() {
           </button>
         </div>
       </div>
-
-      {/* Internet Feed Match Selector */}
-      <div className="glass glow-border p-0 overflow-hidden flex flex-col">
-        <div className="p-4 border-b border-white/10" style={{ background: 'rgba(0,0,0,0.2)' }}>
-          <h3 className="text-sm font-bold uppercase tracking-widest flex items-center gap-2"
-            style={{ color: 'rgb(var(--color-secondary))' }}>
-            <span className="text-lg">📡</span> Match Selection
-          </h3>
-          <p className="text-[10px] text-white/50 mt-1 uppercase tracking-wider">Powered by Live Internet Feed</p>
-        </div>
-
-        <div className="max-h-[300px] overflow-y-auto custom-scrollbar flex flex-col p-2 gap-2 bg-black/20">
-          {matches.map((m) => {
-            const isSelected = selectedMatchId === m.id;
-            const isLive = m.status === 'LIVE';
-            return (
-              <div
-                key={m.id}
-                onClick={() => setSelectedMatchId(m.id)}
-                className={`relative overflow-hidden rounded-xl cursor-pointer transition-all duration-300 transform ${isSelected
-                    ? 'border-2 scale-[1.02] shadow-lg'
-                    : 'border border-white/5 hover:border-white/20 hover:scale-[1.01] opacity-80 hover:opacity-100'
-                  }`}
-                style={{
-                  borderColor: isSelected ? 'rgb(var(--color-primary))' : undefined,
-                  background: isSelected ? 'rgba(var(--color-primary), 0.1)' : 'rgba(255,255,255,0.03)'
-                }}
-              >
-                {isSelected && (
-                  <div className="absolute top-0 left-0 w-1 h-full bg-[rgb(var(--color-primary))] shadow-[0_0_10px_rgb(var(--color-primary))]" />
-                )}
-
-                <div className="p-3 pl-4 flex flex-col gap-2">
-                  <div className="flex justify-between items-start">
-                    {isLive ? (
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-black tracking-widest bg-red-500/20 text-red-400 border border-red-500/30">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_5px_red]" />
-                        LIVE
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold tracking-widest bg-white/10 text-white/60">
-                        COMPLETED
-                      </span>
-                    )}
-                    {/* Logos */}
-                    <div className="flex -space-x-2">
-                      {m.title.split(' v ').slice(0, 2).map((teamPart: string, idx: number) => (
-                        <div key={idx} className="w-6 h-6 rounded-full bg-white/10 border border-white/20 p-0.5 overflow-hidden flex items-center justify-center">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={getLogoForTeamName(teamPart.trim())} alt="team" className="w-full h-full object-contain" />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <h4 className="text-xs font-semibold leading-tight text-white/90">
-                    {m.title}
-                  </h4>
-                </div>
-              </div>
-            );
-          })}
-          {matches.length === 0 && (
-            <div className="flex flex-col items-center justify-center p-6 text-white/40 gap-2">
-              <span className="animate-spin text-xl">⏳</span>
-              <span className="text-xs tracking-wider uppercase">Scanning Internet...</span>
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Match Highlights */}
       {highlights.length > 0 && (
         <div className="glass glow-border p-4">

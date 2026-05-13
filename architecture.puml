@@ -26,7 +26,7 @@ rectangle "Google Cloud Run" {
     
     package "Agent Layer" {
       [Scout Agent] as Scout
-      [Psychologist Agent] as Psych
+      [Persona Agent] as Persona
       [Historian Agent] as Hist
       [Oracle Agent] as Oracle
     }
@@ -35,6 +35,7 @@ rectangle "Google Cloud Run" {
       database "SQLite\nvibestump.db" as DB
     }
     
+    [IPL Points Table] as Points
     [Dynamic Match Simulator] as Sim
   }
 }
@@ -58,9 +59,9 @@ Scout ..> Sim : fallback (no live match)
 Sim --> Gemini : generates match events
 Scout --> DB : stores match data
 
-BE --> Psych
-Psych --> Gemini : structured JSON schema
-Psych --> Tenor : fetch dynamic meme
+BE --> Persona
+Persona --> Gemini : structured JSON schema
+Persona --> Tenor : fetch dynamic meme
 
 BE --> Hist
 Hist --> Gemini : historical context

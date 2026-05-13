@@ -102,7 +102,15 @@ class ScoutAgent:
                             target_item = item
                             break
                 if not target_item and items:
-                    target_item = items[0]
+                    # Prioritize IPL teams in the title
+                    ipl_teams = ["RCB", "KKR", "CSK", "MI", "SRH", "GT", "LSG", "DC", "RR", "PBKS", "Bengaluru", "Chennai", "Kolkata", "Mumbai", "Hyderabad", "Gujarat", "Lucknow", "Delhi", "Rajasthan", "Punjab"]
+                    for item in items:
+                        t = item.find("title").text.lower()
+                        if any(team.lower() in t for team in ipl_teams):
+                            target_item = item
+                            break
+                    if not target_item:
+                        target_item = items[0]
 
                 if target_item:
                     title = target_item.find("title").text if target_item.find("title") is not None else "LIVE: Match in progress"
@@ -210,9 +218,9 @@ async def fetch_meme(mood: str, search_query: str = "") -> str:
 
 # ── YouTube ──────────────────────────────────────────────────────────
 FALLBACK_VIDEOS = [
-    {"title": "RCB vs KKR — IPL 2026 Match 57 Preview", "videoId": "dQw4w9WgXcQ", "thumbnail": ""},
-    {"title": "Top 10 RCB vs KKR Clashes in IPL History", "videoId": "dQw4w9WgXcQ", "thumbnail": ""},
-    {"title": "Virat Kohli's Best Innings vs KKR", "videoId": "dQw4w9WgXcQ", "thumbnail": ""},
+    {"title": "Best of IPL — Classic Matches", "videoId": "v29Y-V0-I-s", "thumbnail": "https://i.ytimg.com/vi/v29Y-V0-I-s/hqdefault.jpg"},
+    {"title": "Incredible Catch Highlights", "videoId": "H8-fCPrZ4dI", "thumbnail": "https://i.ytimg.com/vi/H8-fCPrZ4dI/hqdefault.jpg"},
+    {"title": "Last Over Drama — IPL Finishes", "videoId": "3j0XmZJk_uM", "thumbnail": "https://i.ytimg.com/vi/3j0XmZJk_uM/hqdefault.jpg"},
 ]
 
 
@@ -241,6 +249,51 @@ def fetch_youtube_highlights(query: str = "IPL 2026 highlights", max_results: in
         print(f"[YouTube] Error: {e}")
         return FALLBACK_VIDEOS
 
+
+# ── IPL Metadata ──────────────────────────────────────────────────
+IPL_POINTS_TABLE = [
+    {"team": "RCB", "played": 12, "won": 8, "lost": 4, "pts": 16, "nrr": "+0.850"},
+    {"team": "CSK", "played": 12, "won": 7, "lost": 5, "pts": 14, "nrr": "+0.420"},
+    {"team": "KKR", "played": 12, "won": 7, "lost": 5, "pts": 14, "nrr": "+0.310"},
+    {"team": "MI", "played": 11, "won": 6, "lost": 5, "pts": 12, "nrr": "+0.150"},
+    {"team": "SRH", "played": 11, "won": 5, "lost": 6, "pts": 10, "nrr": "-0.050"},
+    {"team": "GT", "played": 12, "won": 5, "lost": 7, "pts": 10, "nrr": "-0.220"},
+    {"team": "LSG", "played": 11, "won": 4, "lost": 7, "pts": 8, "nrr": "-0.450"},
+    {"team": "DC", "played": 11, "won": 4, "lost": 7, "pts": 8, "nrr": "-0.550"},
+]
+
+TEAM_DETAILS = {
+    "RCB": {
+        "upcoming": ["vs CSK (May 18)", "vs GT (May 22)"],
+        "previous": ["Beat KKR by 4 wickets", "Beat MI by 25 runs"],
+        "rank": 1,
+        "coach": "Andy Flower"
+    },
+    "CSK": {
+        "upcoming": ["vs RCB (May 18)", "vs MI (May 21)"],
+        "previous": ["Lost to GT by 5 runs", "Beat SRH by 8 wickets"],
+        "rank": 2,
+        "coach": "Stephen Fleming"
+    },
+    "KKR": {
+        "upcoming": ["vs SRH (May 16)", "vs DC (May 20)"],
+        "previous": ["Lost to RCB by 4 wickets", "Beat MI by 12 runs"],
+        "rank": 3,
+        "coach": "Chandrakant Pandit"
+    }
+}
+
+async def get_points_table():
+    # In a real app, scrape https://www.espncricinfo.com/series/indian-premier-league-2024-1410320/points-table-standings
+    return IPL_POINTS_TABLE
+
+def get_team_info(team_code: str):
+    return TEAM_DETAILS.get(team_code.upper(), {
+        "upcoming": ["Schedule pending..."],
+        "previous": ["Results pending..."],
+        "rank": "-",
+        "coach": "N/A"
+    })
 
 # ── Diversion Protocol ───────────────────────────────────────────────
 def mock_food_delivery_api(location: str = "Bengaluru") -> str:

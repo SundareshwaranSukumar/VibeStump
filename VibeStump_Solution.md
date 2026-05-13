@@ -1,7 +1,7 @@
-# VibeStump: Agentic High-Fidelity Broadcast Platform
+# VibeStump: Agentic Premier League — High-Fidelity Broadcast Platform
 
 ## Overview
-VibeStump has evolved from a simple static dashboard into a fully responsive, TV-style broadcast overlay using Next.js, Framer Motion, and Google Gemini 2.5 Flash.
+VibeStump has evolved into the **Agentic Premier League**, a professional-grade, TV-style broadcast overlay using Next.js, Framer Motion, and Google Gemini. It features real-time IPL data, run progression graphs, and human-like agent personas.
 
 ## How I Solved the Challenges
 
