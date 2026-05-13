@@ -1,0 +1,50 @@
+@startuml VibeStump Architecture
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam DefaultFontName Arial
+skinparam roundcorner 10
+skinparam componentStyle uml2
+
+package "Client Layer" {
+  [Streamlit UI\n(Fan Dashboard)] as UI
+}
+
+package "Google Cloud Run (Serverless)" {
+  node "VibeStump Container" {
+    
+    [Auto-Refresh Loop\n(State Management)] as State
+    
+    package "Agentic Modules" {
+      [The Scout Agent\n(tools.py)] as Scout
+      [The Psychologist Agent\n(agents.py)] as Psychologist
+      [The Executor Agent\n(tools.py)] as Executor
+    }
+    
+    [Config & Theming\n(utils.py)] as Utils
+  }
+}
+
+cloud "External Services" {
+  [ESPNcricinfo RSS\n(Live Match Feed)] as RSS
+  [Google Gemini API\n(gemini-2.5-flash)] as Gemini
+  [Giphy API\n(Visual Interventions)] as Giphy
+}
+
+' Data Flow
+UI <--> State : "30s Polling / User Inputs"
+State --> Scout : "1. Fetch Match State"
+Scout --> RSS : "HTTP GET (XML)"
+State --> Psychologist : "2. Analyze Context"
+Psychologist --> Gemini : "Prompt + Structured Schema"
+Gemini -.> Psychologist : "JSON (Vibe, Tension, Query)"
+State --> Executor : "3. Trigger Intervention"
+Executor --> Giphy : "Search GIF by Query"
+
+' Fallbacks
+Scout -[dotted]-> [fallback_data.json] : "Fallback on Network Error"
+Executor -[dotted]-> [Hardcoded Memes] : "Fallback on API Error"
+
+' Return Flow
+State --> UI : "Render Gauge, Charts & Memes"
+
+@enduml

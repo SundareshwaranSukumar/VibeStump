@@ -2,6 +2,7 @@ import os
 import json
 import random
 import requests
+import xml.etree.ElementTree as ET
 from utils import CRICKET_API_KEY, GIPHY_API_KEY
 
 # Fallback Memes if Giphy API is not configured or fails
@@ -15,7 +16,8 @@ FALLBACK_MEMES = {
 def get_live_commentary(ball_index=None):
     """
     The Scout Agent: Fetches live cricket commentary.
-    Uses Simulation Mode (fallback_data.json) if API key is missing or request fails.
+    Attempts to fetch from a free public RSS feed if no API key is provided.
+    Falls back to Simulation Mode if the internet is down.
     """
     if CRICKET_API_KEY:
         try:
@@ -26,19 +28,46 @@ def get_live_commentary(ball_index=None):
                 "X-RapidAPI-Key": CRICKET_API_KEY,
                 "X-RapidAPI-Host": "cricbuzz-cricket.p.rapidapi.com"
             }
-            # For this demo, we simulate the API call actually failing/returning dummy
-            # response = requests.get(url, headers=headers, timeout=2)
-            # response.raise_for_status()
-            # return parse_real_cricket_data(response.json())
-            
             # Since we don't have a guaranteed live match, we simulate an error/rate limit
             raise Exception("API Rate Limit or No Live Match")
             
         except Exception as e:
-            print(f"Cricket API Error: {e}. Switching to Simulation Mode.")
-            return _get_simulation_commentary(ball_index)
+            print(f"Cricket API Error: {e}. Switching to Public RSS.")
+            return _fetch_public_rss(ball_index)
     else:
-        return _get_simulation_commentary(ball_index)
+        return _fetch_public_rss(ball_index)
+
+def _fetch_public_rss(index=None):
+    """Fetches live score data from a free public RSS feed (ESPNcricinfo)."""
+    try:
+        url = 'http://static.cricinfo.com/rss/livescores.xml'
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        response = requests.get(url, headers=headers, timeout=5)
+        response.raise_for_status()
+        
+        tree = ET.fromstring(response.content)
+        items = tree.findall('.//item')
+        
+        if not items:
+            return _get_simulation_commentary(index)
+            
+        # Extract titles (scores)
+        scores = [item.find('title').text for item in items if item.find('title') is not None]
+        
+        # Pick one to focus on, e.g., using the index to rotate or just pick the first active one
+        if index is not None:
+             selected_score = scores[index % len(scores)]
+        else:
+             selected_score = random.choice(scores)
+             
+        # Combine with a simulation flavor text to give it "commentary" feel
+        flavor_text = _get_simulation_commentary(index)
+        
+        return f"🚨 LIVE UPDATE: {selected_score} | 🎙️ {flavor_text}"
+        
+    except Exception as e:
+        print(f"RSS Fetch Error: {e}. Switching to offline Simulation Mode.")
+        return _get_simulation_commentary(index)
 
 def _get_simulation_commentary(index=None):
     """Fallback method for demo purposes."""
