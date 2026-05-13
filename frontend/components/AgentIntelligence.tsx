@@ -16,19 +16,20 @@ interface Analysis {
   meme_url: string;
 }
 
-export default function AgentIntelligence({ analysis }: { analysis: Analysis | null }) {
-  const { diversionActive } = useVibeStore();
+export default function AgentIntelligence({ analysis, matchContext }: { analysis: Analysis | null, matchContext?: string }) {
+  const { diversionActive, selectedTeam } = useVibeStore();
   const [historianInsight, setHistorianInsight] = useState<string | null>(null);
 
   useEffect(() => {
     if (analysis?.is_critical_event) {
-      fetchHistorian(analysis.event_type, `Event: ${analysis.event_type} during RCB vs KKR`)
+      const contextStr = matchContext || `Event for ${selectedTeam}`;
+      fetchHistorian(analysis.event_type, `Event: ${analysis.event_type} during ${contextStr}`)
         .then((data) => setHistorianInsight(data.insight))
         .catch(() => setHistorianInsight(null));
     } else {
       setHistorianInsight(null);
     }
-  }, [analysis?.event_type, analysis?.is_critical_event]);
+  }, [analysis?.event_type, analysis?.is_critical_event, matchContext, selectedTeam]);
 
   if (diversionActive) {
     return <DiversionProtocol />;

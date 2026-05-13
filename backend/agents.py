@@ -203,6 +203,9 @@ def _offline_simulation(prev: dict) -> MatchSimulationResult:
     return MatchSimulationResult(
         commentary=f"{new_overs}: Bowler to Batsman, and it's played for runs. (Offline Simulation)",
         runs=runs, wickets=wickets, overs=new_overs, run_rate=runs/(o+b/6),
+        target=195, batting="RCB", bowling="KKR", required_rate=10.5
+    )
+
 # ── Oracle Chatbot & Oracle Match Logic ────────────────────────────
 class OracleAnalysisResult(BaseModel):
     vibe: int = Field(description="Fan vibe: -10 to 10")

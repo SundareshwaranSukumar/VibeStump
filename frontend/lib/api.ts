@@ -5,13 +5,25 @@
 
 const BASE = '';  // Uses Next.js rewrite proxy
 
-export async function fetchScore(ball: number, demo: boolean) {
-  const res = await fetch(`${BASE}/api/score?ball=${ball}&demo=${demo}`);
+export async function fetchMatches() {
+  const res = await fetch(`${BASE}/api/matches`);
   return res.json();
 }
 
-export async function fetchCommentary(ball: number, demo: boolean) {
-  const res = await fetch(`${BASE}/api/commentary?ball=${ball}&demo=${demo}`);
+export async function fetchScore(ball: number, demo: boolean, matchId: string | null = null) {
+  const url = `${BASE}/api/score?ball=${ball}&demo=${demo}${matchId ? `&match_id=${encodeURIComponent(matchId)}` : ''}`;
+  const res = await fetch(url);
+  return res.json();
+}
+
+export async function fetchCommentary(ball: number, demo: boolean, matchId: string | null = null) {
+  const url = `${BASE}/api/commentary?ball=${ball}&demo=${demo}${matchId ? `&match_id=${encodeURIComponent(matchId)}` : ''}`;
+  const res = await fetch(url);
+  return res.json();
+}
+
+export async function fetchHighlights(query: string) {
+  const res = await fetch(`${BASE}/api/youtube?q=${encodeURIComponent(query)}`);
   return res.json();
 }
 

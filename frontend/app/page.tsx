@@ -19,7 +19,7 @@ import OracleChat from '@/components/OracleChat';
 export default function Home() {
   const {
     selectedTeam, ballCount, demoMode, diversionActive,
-    vibeHistory, nextBall, addVibe, setDiversion,
+    vibeHistory, nextBall, addVibe, setDiversion, selectedMatchId
   } = useVibeStore();
 
   const [score, setScore] = useState<any>(null);
@@ -51,10 +51,10 @@ export default function Home() {
     if (diversionActive) return;
     try {
       const [scoreData, commData] = await Promise.all([
-        fetchScore(ballCount, demoMode),
-        fetchCommentary(ballCount, demoMode),
+        fetchScore(ballCount, demoMode, selectedMatchId),
+        fetchCommentary(ballCount, demoMode, selectedMatchId),
       ]);
-      
+
       // If live mode and commentary hasn't changed, do not process Oracle or animations
       if (!demoMode && commentary === commData.commentary) {
         return; // Wait for the next poll
@@ -67,10 +67,10 @@ export default function Home() {
         analyzeVibe(commData.commentary),
         fetchOracle(commData.commentary, selectedTeam)
       ]);
-      
+
       setAnalysis(vibeRes);
       addVibe(vibeRes.vibe_score);
-      
+
       setOracleResult({ eventType: oracleRes.eventType, reaction: oracleRes.reaction });
       handleOracleResult(oracleRes);
 
@@ -84,7 +84,7 @@ export default function Home() {
     } catch (e) {
       console.error('[AgenticLoop]', e);
     }
-  }, [ballCount, demoMode, diversionActive, vibeHistory, addVibe, nextBall, setDiversion, selectedTeam, handleOracleResult, commentary]);
+  }, [ballCount, demoMode, diversionActive, vibeHistory, addVibe, nextBall, setDiversion, selectedTeam, handleOracleResult, commentary, selectedMatchId]);
 
   useEffect(() => {
     runAgentLoop();
@@ -100,7 +100,7 @@ export default function Home() {
       <BroadcastOverlay eventType={oracleResult.eventType} reaction={oracleResult.reaction} />
 
       <LiveScoreTicker score={score} />
-      
+
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-[300px_1fr_360px] gap-6 p-6">
         {/* Left Sidebar: Tournament & Gamification */}
         <aside className="hidden lg:flex flex-col gap-4">
@@ -115,7 +115,7 @@ export default function Home() {
 
         {/* Right Sidebar: Agentic Intelligence */}
         <aside className="flex flex-col gap-4">
-          <AgentIntelligence analysis={analysis} />
+          <AgentIntelligence analysis={analysis} matchContext={score ? `${score.batting} vs ${score.bowling}` : undefined} />
         </aside>
       </div>
 

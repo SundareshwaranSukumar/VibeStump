@@ -55,9 +55,8 @@ class ScoutAgent:
         }
         self._sim_commentary = "15.0: The players are walking out to the middle. This is going to be an epic finish!"
 
-    async def _scrape_live_match(self) -> dict | None:
+    async def get_all_matches(self) -> list:
         try:
-            # We scrape a generic cricket live scores page or RSS
             import xml.etree.ElementTree as ET
             async with httpx.AsyncClient(timeout=5.0) as client:
                 resp = await client.get(
@@ -66,25 +65,95 @@ class ScoutAgent:
                 )
                 resp.raise_for_status()
                 tree = ET.fromstring(resp.content)
+                matches = []
+                for idx, item in enumerate(tree.findall(".//item")):
+                    title = item.find("title").text if item.find("title") is not None else ""
+                    guid = item.find("guid").text if item.find("guid") is not None else str(idx)
+                    # Simple heuristic: if there's a * or 'v', it's a match
+                    if title:
+                        matches.append({
+                            "id": guid,
+                            "title": title,
+                            "status": "LIVE" if "*" in title or "require" in title.lower() else "COMPLETED"
+                        })
+                return matches
+        except Exception as e:
+            print(f"[Scout] Fetch matches failed: {e}")
+            return []
+
+    async def _scrape_live_match(self, match_id: str = None) -> dict | None:
+        try:
+            import xml.etree.ElementTree as ET
+            import re
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(
+                    "http://static.cricinfo.com/rss/livescores.xml",
+                    headers={"User-Agent": "Mozilla/5.0"},
+                )
+                resp.raise_for_status()
+                tree = ET.fromstring(resp.content)
                 items = tree.findall(".//item")
-                if items:
-                    title = items[0].find("title").text if items[0].find("title") is not None else "LIVE: Match in progress"
+                
+                target_item = None
+                if match_id:
+                    for item in items:
+                        guid = item.find("guid")
+                        if guid is not None and guid.text == match_id:
+                            target_item = item
+                            break
+                if not target_item and items:
+                    target_item = items[0]
+
+                if target_item:
+                    title = target_item.find("title").text if target_item.find("title") is not None else "LIVE: Match in progress"
+                    
+                    # Title format: "Royal Challengers Bengaluru 180/4 * v Chennai Super Kings"
+                    parts = title.split(' v ')
+                    batting = parts[0].strip()
+                    bowling = parts[1].strip() if len(parts) > 1 else "Unknown"
+                    
+                    runs, wickets, overs = 0, 0, "0.0"
+                    
+                    # Look for scores in batting team string
+                    match = re.search(r'(\d+)/(\d+)', batting)
+                    if match:
+                        runs = int(match.group(1))
+                        wickets = int(match.group(2))
+                        # Strip score to get just team name
+                        batting = re.sub(r'\d+/\d+.*$', '', batting).strip()
+                    else:
+                        # Sometimes score is in the bowling string if innings just changed
+                        match2 = re.search(r'(\d+)/(\d+)', title)
+                        if match2:
+                            runs = int(match2.group(1))
+                            wickets = int(match2.group(2))
+                            
+                    # Clean up bowling string
+                    bowling = re.sub(r'\d+/\d+.*$', '', bowling).strip()
+                    
+                    # Try extracting target if present
+                    target = "—"
+                    target_match = re.search(r'target (\d+)', title.lower())
+                    if target_match:
+                        target = target_match.group(1)
+
                     return {"commentary": f"🚨 {title}", "score": {
-                        "runs": 0, "wickets": 0, "overs": "0.0", "run_rate": 0,
-                        "target": "—", "batting": "LIVE", "bowling": "LIVE", "required_rate": 0
+                        "runs": runs, "wickets": wickets, "overs": overs, "run_rate": 0,
+                        "target": target, "batting": batting, "bowling": bowling, "required_rate": 0
                     }}
         except Exception as e:
             print(f"[Scout] Scrape failed: {e}")
         return None
 
-    async def _ensure_ball(self, index: int, demo_mode: bool):
-        if index in self._history:
+    async def _ensure_ball(self, index: int, demo_mode: bool, match_id: str = None):
+        cache_key = f"{index}_{match_id}" if match_id else index
+        if cache_key in self._history:
             return
             
         if not demo_mode:
-            live_data = await self._scrape_live_match()
+            live_data = await self._scrape_live_match(match_id)
             if live_data:
-                self._history[index] = live_data
+                self._history[cache_key] = live_data
                 # Store in DB
                 store_match_event(index, live_data["score"], live_data["commentary"], is_live=True)
                 return
@@ -99,25 +168,22 @@ class ScoutAgent:
             "required_rate": result.required_rate
         }
         self._sim_commentary = result.commentary
-        self._history[index] = {
+        self._history[cache_key] = {
             "score": self._sim_state,
             "commentary": self._sim_commentary
         }
         # Store in DB
         store_match_event(index, self._sim_state, self._sim_commentary, is_live=False)
 
-    async def get_commentary(self, ball_index: int, demo_mode: bool = True) -> str:
-        await self._ensure_ball(ball_index, demo_mode)
-        return self._history[ball_index]["commentary"]
+    async def get_commentary(self, ball_index: int, demo_mode: bool = True, match_id: str = None) -> str:
+        await self._ensure_ball(ball_index, demo_mode, match_id)
+        cache_key = f"{ball_index}_{match_id}" if match_id else ball_index
+        return self._history[cache_key]["commentary"]
 
-    def get_scorecard(self, ball_index: int, demo_mode: bool = True) -> dict:
-        # get_score is called synchronously, but it's safe if get_commentary was called first.
-        # In main.py, it's called asynchronously but ScoutAgent's get_scorecard is sync.
-        # However, we can't reliably await inside get_scorecard if it's sync.
-        # Actually, in main.py `get_score` does not await `get_scorecard`.
-        # Let's just return the last known state if index not in history.
-        if ball_index in self._history:
-            return self._history[ball_index]["score"]
+    def get_scorecard(self, ball_index: int, demo_mode: bool = True, match_id: str = None) -> dict:
+        cache_key = f"{ball_index}_{match_id}" if match_id else ball_index
+        if cache_key in self._history:
+            return self._history[cache_key]["score"]
         return self._sim_state
 
 

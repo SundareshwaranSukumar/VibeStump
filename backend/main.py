@@ -77,16 +77,22 @@ async def root():
     return {"status": "online", "service": "vibestump-backend"}
 
 
+@app.get("/api/matches")
+async def get_matches():
+    """Returns all available internet matches."""
+    return await scout.get_all_matches()
+
+
 @app.get("/api/score")
-async def get_score(ball: int = 0, demo: bool = True):
+async def get_score(ball: int = 0, demo: bool = True, match_id: str = None):
     """Returns the live scorecard."""
-    return scout.get_scorecard(ball, demo_mode=demo)
+    return scout.get_scorecard(ball, demo_mode=demo, match_id=match_id)
 
 
 @app.get("/api/commentary")
-async def get_commentary(ball: int = 0, demo: bool = True):
+async def get_commentary(ball: int = 0, demo: bool = True, match_id: str = None):
     """Returns the commentary for a specific ball."""
-    text = await scout.get_commentary(ball, demo_mode=demo)
+    text = await scout.get_commentary(ball, demo_mode=demo, match_id=match_id)
     return {"ball": ball, "commentary": text}
 
 
