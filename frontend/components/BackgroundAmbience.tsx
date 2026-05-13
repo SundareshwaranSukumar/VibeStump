@@ -1,0 +1,44 @@
+// @ts-nocheck
+'use client';
+
+import ReactPlayer from 'react-player';
+import { useVibeStore } from '@/lib/store';
+import { useEffect, useState } from 'react';
+
+const TEAM_VIDEOS: Record<string, string> = {
+  RCB: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', // Placeholder
+  CSK: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+  KKR: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+  MI:  'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+};
+
+export default function BackgroundAmbience() {
+  const { selectedTeam } = useVibeStore();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+
+  const videoUrl = TEAM_VIDEOS[selectedTeam] || TEAM_VIDEOS.RCB;
+
+  return (
+    <div className="fixed inset-0 -z-10 overflow-hidden bg-black pointer-events-none">
+      <div className="absolute inset-0 opacity-20 scale-150">
+        <ReactPlayer
+          url={videoUrl}
+          playing
+          loop
+          muted
+          width="100%"
+          height="100%"
+          controls={false}
+        />
+      </div>
+      {/* Dynamic Overlay Gradient */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[rgba(var(--color-bg),0.8)] via-[rgba(var(--color-bg),0.95)] to-black" />
+    </div>
+  );
+}

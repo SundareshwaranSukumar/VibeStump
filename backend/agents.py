@@ -203,6 +203,59 @@ def _offline_simulation(prev: dict) -> MatchSimulationResult:
     return MatchSimulationResult(
         commentary=f"{new_overs}: Bowler to Batsman, and it's played for runs. (Offline Simulation)",
         runs=runs, wickets=wickets, overs=new_overs, run_rate=runs/(o+b/6),
-        target=195, batting="RCB", bowling="KKR", required_rate=10.5
-    )
+# ── Oracle Chatbot & Oracle Match Logic ────────────────────────────
+class OracleAnalysisResult(BaseModel):
+    vibe: int = Field(description="Fan vibe: -10 to 10")
+    tension: int = Field(description="Tension: 0 to 10")
+    eventType: str = Field(description="'wicket' | 'boundary' | 'none'")
+    reaction: str = Field(description="Exciting commentary reaction")
+
+_ORACLE_PROMPT = """You are an expert commentator for {selectedTeam}. Analyze this event.
+Return JSON with vibe (-10 to 10), tension (0 to 10), eventType ('wicket', 'boundary', or 'none'), and reaction.
+Event: {commentary}"""
+
+def analyze_oracle(commentary: str, team: str) -> OracleAnalysisResult:
+    if not _client:
+        c = commentary.lower()
+        evt = "wicket" if "wicket" in c or "out" in c else ("boundary" if "four" in c or "six" in c else "none")
+        return OracleAnalysisResult(vibe=5, tension=8, eventType=evt, reaction="What a moment!")
+    try:
+        resp = _client.models.generate_content(
+            model=_MODEL,
+            contents=_ORACLE_PROMPT.format(selectedTeam=team, commentary=commentary),
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=OracleAnalysisResult,
+                temperature=0.7,
+            ),
+        )
+        if hasattr(resp, "parsed") and resp.parsed:
+            return resp.parsed
+        return OracleAnalysisResult(**json.loads(resp.text))
+    except Exception as e:
+        print(f"[Oracle] Error: {e}")
+        return OracleAnalysisResult(vibe=5, tension=8, eventType="none", reaction="An exciting moment!")
+
+def chat_with_oracle(message: str, history: list) -> str:
+    if not _client:
+        return "I am offline right now. Connect to the Gemini API for live stats and search!"
+    try:
+        contents = [{"role": "user" if m["role"] == "user" else "model", "parts": [{"text": m["content"]}]} for m in history]
+        contents.append({"role": "user", "parts": [{"text": message}]})
+        
+        # Use google_search retrieval
+        tools = [{"google_search": {}}]
+        
+        resp = _client.models.generate_content(
+            model=_MODEL,
+            contents=contents,
+            config=types.GenerateContentConfig(
+                tools=tools,
+                temperature=0.7,
+            )
+        )
+        return resp.text
+    except Exception as e:
+        print(f"[Chatbot] Error: {e}")
+        return "Sorry, I couldn't reach the search engine right now."
 

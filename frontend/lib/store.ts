@@ -32,12 +32,16 @@ export interface VibeState {
   demoMode: boolean;
   diversionActive: boolean;
   diversionMessage: string | null;
+  fanPoints: number;
+  currentPrediction: string | null;
   setTeam: (team: TeamName) => void;
   addVibe: (score: number) => void;
   nextBall: () => void;
   resetMatch: () => void;
   setDiversion: (active: boolean, msg?: string | null) => void;
   toggleDemo: () => void;
+  addPoints: (amount: number) => void;
+  setPrediction: (pred: string | null) => void;
 }
 
 export const useVibeStore = create<VibeState>((set) => ({
@@ -47,11 +51,15 @@ export const useVibeStore = create<VibeState>((set) => ({
   demoMode: true,
   diversionActive: false,
   diversionMessage: null,
+  fanPoints: 0,
+  currentPrediction: null,
 
   setTeam: (team) => set({ selectedTeam: team }),
   addVibe: (score) => set((s) => ({ vibeHistory: [...s.vibeHistory, score] })),
   nextBall: () => set((s) => ({ ballCount: s.ballCount + 1 })),
-  resetMatch: () => set({ vibeHistory: [], ballCount: 0, diversionActive: false, diversionMessage: null }),
+  resetMatch: () => set({ vibeHistory: [], ballCount: 0, diversionActive: false, diversionMessage: null, fanPoints: 0, currentPrediction: null }),
   setDiversion: (active, msg = null) => set({ diversionActive: active, diversionMessage: msg }),
   toggleDemo: () => set((s) => ({ demoMode: !s.demoMode })),
+  addPoints: (amount) => set((s) => ({ fanPoints: s.fanPoints + amount })),
+  setPrediction: (pred) => set({ currentPrediction: pred }),
 }));

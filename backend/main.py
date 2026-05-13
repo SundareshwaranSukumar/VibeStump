@@ -128,3 +128,26 @@ async def diversion_food():
 async def diversion_netflix():
     """Mock Netflix streaming API."""
     return {"message": mock_netflix_api()}
+
+class OracleRequest(BaseModel):
+    commentary: str
+    team: str
+
+@app.post("/api/oracle")
+async def oracle(req: OracleRequest):
+    """Runs the Oracle agent for gamification."""
+    from agents import analyze_oracle
+    result = analyze_oracle(req.commentary, req.team)
+    return result.model_dump()
+
+class ChatRequest(BaseModel):
+    message: str
+    history: list
+
+@app.post("/api/chat")
+async def chat(req: ChatRequest):
+    """Runs the Search-Enabled Chatbot."""
+    from agents import chat_with_oracle
+    resp_text = chat_with_oracle(req.message, req.history)
+    return {"reply": resp_text}
+

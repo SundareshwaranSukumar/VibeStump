@@ -22,32 +22,74 @@ export default function TournamentHub() {
 
   return (
     <div className="space-y-4">
+      {/* Gamification (Fan Points & Oracle) */}
+      <div className="glass glow-border p-4 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-24 h-24 bg-[rgb(var(--color-primary))] opacity-10 blur-2xl rounded-full" />
+        
+        <div className="flex justify-between items-end mb-4">
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-white/50 mb-1">
+              Fan Points
+            </h3>
+            <div className="text-4xl font-black italic tracking-tighter glow-text">
+              {useVibeStore().fanPoints}
+            </div>
+          </div>
+          <div className="text-2xl">🔥</div>
+        </div>
+
+        <div className="border-t border-white/10 pt-4 mt-2">
+          <h4 className="text-xs font-bold uppercase tracking-wider mb-2 text-white/80">
+            Oracle Prediction
+          </h4>
+          <p className="text-[10px] text-white/50 mb-3">
+            Predict the next ball. Win 100 points!
+          </p>
+          
+          <div className="grid grid-cols-2 gap-2">
+            {['Hype', 'High Tension', 'Calm', 'Wicket'].map(pred => {
+              const currentPrediction = useVibeStore().currentPrediction;
+              const setPrediction = useVibeStore().setPrediction;
+              const isActive = currentPrediction === pred;
+              
+              return (
+                <button
+                  key={pred}
+                  onClick={() => setPrediction(pred)}
+                  className={`py-1.5 px-2 text-[10px] font-bold uppercase tracking-wider rounded-md border transition-all ${
+                    isActive 
+                      ? 'bg-[rgb(var(--color-primary))] text-black border-[rgb(var(--color-primary))] shadow-[0_0_10px_rgba(var(--color-primary),0.5)] scale-105' 
+                      : 'bg-black/40 text-white/60 border-white/10 hover:border-white/30'
+                  }`}
+                >
+                  {pred}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
       {/* Controls */}
-      <div className="glass glow-border p-4">
-        <h3 className="text-sm font-bold uppercase tracking-wider mb-3 glow-text">
-          ⚙️ Controls
-        </h3>
-        <button
-          onClick={toggleDemo}
-          className={`w-full py-2 px-3 rounded-lg text-xs font-semibold mb-2 transition-all ${
-            demoMode
-              ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-              : 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
-          }`}
-        >
-          {demoMode ? '🚀 Demo Mode ON' : '📡 Live Mode'}
-        </button>
-        <button
-          onClick={resetMatch}
-          className="w-full py-2 px-3 rounded-lg text-xs font-semibold
-                     bg-red-500/10 text-red-400 border border-red-500/20
-                     hover:bg-red-500/20 transition-all"
-        >
-          🗑️ Reset Match
-        </button>
-        <p className="text-xs mt-2" style={{ color: 'rgba(var(--color-muted))' }}>
-          Ball: {ballCount + 1}
-        </p>
+      <div className="glass p-3 border border-white/10">
+        <div className="flex gap-2">
+          <button
+            onClick={toggleDemo}
+            className={`flex-1 py-1.5 rounded text-[10px] font-bold uppercase transition-all ${
+              demoMode
+                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                : 'bg-orange-500/20 text-orange-400 border border-orange-500/30'
+            }`}
+          >
+            {demoMode ? 'Demo ON' : 'Live'}
+          </button>
+          <button
+            onClick={resetMatch}
+            className="flex-1 py-1.5 rounded text-[10px] font-bold uppercase bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all"
+          >
+            Reset
+          </button>
+        </div>
       </div>
 
       {/* Points Table */}

@@ -3,11 +3,18 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useVibeStore, TEAM_THEMES } from '@/lib/store';
 import { fetchScore, fetchCommentary, analyzeVibe } from '@/lib/api';
+import { fetchOracle, useOracle } from '@/lib/useOracle';
+import { soundManager } from '@/lib/SoundManager';
+
 import LiveScoreTicker from '@/components/LiveScoreTicker';
 import TournamentHub from '@/components/TournamentHub';
 import MatchFeed from '@/components/MatchFeed';
 import AgentIntelligence from '@/components/AgentIntelligence';
 import TeamSelector from '@/components/TeamSelector';
+import BackgroundAmbience from '@/components/BackgroundAmbience';
+import LiveMatchPlayer from '@/components/LiveMatchPlayer';
+import BroadcastOverlay from '@/components/BroadcastOverlay';
+import OracleChat from '@/components/OracleChat';
 
 export default function Home() {
   const {
@@ -18,8 +25,10 @@ export default function Home() {
   const [score, setScore] = useState<any>(null);
   const [commentary, setCommentary] = useState('');
   const [analysis, setAnalysis] = useState<any>(null);
+  const [oracleResult, setOracleResult] = useState<{ eventType: string, reaction: string }>({ eventType: 'none', reaction: '' });
 
   const theme = TEAM_THEMES[selectedTeam];
+  const { handleOracleResult } = useOracle();
 
   // Apply CSS variables for dynamic team theming
   useEffect(() => {
@@ -29,6 +38,13 @@ export default function Home() {
       theme.secondary.startsWith('#') ? hexToRgb(theme.secondary) : theme.secondary
     );
   }, [selectedTeam, theme]);
+
+  // Init SoundManager on first click
+  useEffect(() => {
+    const initSound = () => soundManager.init();
+    window.addEventListener('click', initSound, { once: true });
+    return () => window.removeEventListener('click', initSound);
+  }, []);
 
   // Agentic Loop
   const runAgentLoop = useCallback(async () => {
@@ -41,12 +57,19 @@ export default function Home() {
       setScore(scoreData);
       setCommentary(commData.commentary);
 
-      const result = await analyzeVibe(commData.commentary);
-      setAnalysis(result);
-      addVibe(result.vibe_score);
+      const [vibeRes, oracleRes] = await Promise.all([
+        analyzeVibe(commData.commentary),
+        fetchOracle(commData.commentary, selectedTeam)
+      ]);
+      
+      setAnalysis(vibeRes);
+      addVibe(vibeRes.vibe_score);
+      
+      setOracleResult({ eventType: oracleRes.eventType, reaction: oracleRes.reaction });
+      handleOracleResult(oracleRes);
 
       // Diversion check
-      const vh = [...vibeHistory, result.vibe_score];
+      const vh = [...vibeHistory, vibeRes.vibe_score];
       if (vh.length >= 2 && vh[vh.length - 1] < -7 && vh[vh.length - 2] < -7) {
         setDiversion(true);
         return;
@@ -55,7 +78,7 @@ export default function Home() {
     } catch (e) {
       console.error('[AgenticLoop]', e);
     }
-  }, [ballCount, demoMode, diversionActive, vibeHistory, addVibe, nextBall, setDiversion]);
+  }, [ballCount, demoMode, diversionActive, vibeHistory, addVibe, nextBall, setDiversion, selectedTeam, handleOracleResult]);
 
   useEffect(() => {
     runAgentLoop();
@@ -65,13 +88,31 @@ export default function Home() {
   }, [runAgentLoop, demoMode, diversionActive]);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col relative text-white">
+      <BackgroundAmbience />
+      <BroadcastOverlay eventType={oracleResult.eventType} reaction={oracleResult.reaction} />
+
       <LiveScoreTicker score={score} />
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[280px_1fr_380px] gap-4 p-4">
-        <aside className="hidden lg:block"><TournamentHub /></aside>
-        <main><MatchFeed commentary={commentary} analysis={analysis} /></main>
-        <aside><AgentIntelligence analysis={analysis} /></aside>
+      
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[300px_1fr_360px] gap-6 p-6">
+        {/* Left Sidebar: Tournament & Gamification */}
+        <aside className="hidden lg:flex flex-col gap-4">
+          <TournamentHub />
+        </aside>
+
+        {/* Center: Live Stream & Match Feed */}
+        <main className="flex flex-col gap-6">
+          <LiveMatchPlayer />
+          <MatchFeed commentary={commentary} analysis={analysis} />
+        </main>
+
+        {/* Right Sidebar: Agentic Intelligence */}
+        <aside className="flex flex-col gap-4">
+          <AgentIntelligence analysis={analysis} />
+        </aside>
       </div>
+
+      <OracleChat />
       <TeamSelector />
     </div>
   );
