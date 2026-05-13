@@ -15,7 +15,7 @@ export default function BroadcastOverlay({ eventType, reaction }: BroadcastOverl
   useEffect(() => {
     if (eventType !== 'none') {
       setShow(true);
-      if (eventType === 'wicket') soundManager.play('wicket');
+      if (eventType === 'wicket') soundManager.play('faah');
       else if (eventType === 'boundary') soundManager.play('boundary');
       
       const timer = setTimeout(() => setShow(false), 4000);

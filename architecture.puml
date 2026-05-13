@@ -17,58 +17,61 @@ rectangle "Google Cloud Run" {
 
   node "Frontend Service\n(Next.js + Tailwind)" as FE {
     [Zustand Store] as Store
-    [Recharts] as Charts
-    [TeamSelector] as Theme
+    [Framer Motion] as Animations
+    [React-Player] as Background
+    [API Proxy] as Proxy
   }
 
   node "Backend Service\n(FastAPI + Uvicorn)" as BE {
-
+    
     package "Agent Layer" {
       [Scout Agent] as Scout
       [Psychologist Agent] as Psych
       [Historian Agent] as Hist
-      [Executor Agent] as Exec
+      [Oracle Agent] as Oracle
     }
 
-    package "Fallback Layer" {
-      [SimulatedLiveFeed\nlive_sim.json] as Sim
-      [Meme Dictionary] as Memes
-      [YouTube Fallbacks] as YTFall
+    package "Database Layer" {
+      database "SQLite\nvibestump.db" as DB
     }
+    
+    [Dynamic Match Simulator] as Sim
   }
 }
 
 cloud "External APIs" {
-  [Cricbuzz\nRapidAPI] as Cricbuzz
   [ESPNcricinfo\nRSS Feed] as RSS
   [Google Gemini\n2.5 Flash] as Gemini
+  [Google Search API\n(Gemini Tool)] as GSearch
+  [Tenor API] as Tenor
   [YouTube\nData API v3] as YT
-  [Swiggy / Netflix\n(Mock)] as Mock
 }
 
 ' -- Data Flow --
 Fan --> FE : HTTPS\n(polling every 8-30s)
-FE --> BE : REST API\n(/api/score, /api/analyze, ...)
+FE --> Proxy : Next.js API Routes
+Proxy --> BE : REST API
 
 BE --> Scout
-Scout --> Cricbuzz : httpx async
-Scout --> RSS : httpx fallback
-Scout ..> Sim : local fallback\n(429/500 errors)
+Scout --> RSS : httpx async
+Scout ..> Sim : fallback (no live match)
+Sim --> Gemini : generates match events
+Scout --> DB : stores match data
 
 BE --> Psych
-Psych --> Gemini : structured JSON\nschema output
+Psych --> Gemini : structured JSON schema
+Psych --> Tenor : fetch dynamic meme
 
 BE --> Hist
-Hist --> Gemini : historical\nprompt + context
+Hist --> Gemini : historical context
 
-BE --> Exec
-Exec --> Memes : mood to GIF URL
-Exec --> Mock : Diversion Protocol
+BE --> Oracle
+Oracle --> Gemini : Oracle Predictions
+Oracle --> GSearch : Live stats & chat
 
 BE --> YT : search highlights
-YT ..> YTFall : fallback videos
 
-Store --> Charts : vibe history\ntension data
-Theme --> Store : team colors\nCSS variables
+Store --> Animations : triggers UI updates
+Store --> Background : dynamic theme
 
 @enduml

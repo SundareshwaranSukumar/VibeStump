@@ -1,15 +1,15 @@
 # VibeStump — Agentic Premier League
 
-> AI-powered second-screen fan companion for live IPL matches. Powered by Google Gemini.
+> High-Fidelity AI-powered sports broadcast companion for live IPL matches. Powered by Google Gemini.
 
 ## Architecture
 
 ```
 Next.js Frontend (Port 3000)  <-->  FastAPI Backend (Port 8000)
-  - Recharts charts                   - Scout Agent    --> Cricbuzz / RSS
-  - Zustand state                     - Psychologist   --> Gemini 2.5 Flash
-  - Tailwind glassmorphism            - Historian       --> Gemini 2.5 Flash
-  - Dynamic team theming              - Executor        --> Giphy / YouTube
+  - Broadcast Overlays (Framer Motion) - Scout Agent    --> Cricinfo / SQLite DB
+  - Oracle Mini-Game (Zustand state)   - Psychologist   --> Gemini 2.5 Flash / Tenor API
+  - Background Ambience (react-player) - Historian      --> Gemini 2.5 Flash
+  - Slide-out Chatbot                  - Oracle Agent   --> Gemini Google Search API
 ```
 
 See `architecture.puml` for the full PlantUML diagram.
@@ -19,21 +19,22 @@ See `architecture.puml` for the full PlantUML diagram.
 ```
 VibeStump/
 ├── backend/
-│   ├── main.py              # FastAPI routes (7 endpoints)
-│   ├── agents.py            # Psychologist + Historian agents
-│   ├── tools.py             # Scout, YouTube, mock Swiggy/Netflix
-│   ├── live_sim.json        # Match 57: RCB vs KKR simulation
+│   ├── main.py              # FastAPI routes (chat, oracle, score, analyze)
+│   ├── agents.py            # Psychologist, Historian, Oracle, Simulators
+│   ├── tools.py             # Scout (Web Scraping + DB storage), Tenor API
+│   ├── database.py          # SQLite DB storage for match data
 │   ├── requirements.txt
-│   └── Dockerfile
+│   └── Dockerfile           # Optimized Cloud Run config
 ├── frontend/
-│   ├── app/                 # Next.js layout, page, CSS
-│   ├── components/          # 7 UI components
-│   ├── lib/                 # Zustand store + API helpers
+│   ├── app/                 # Next.js App Router
+│   ├── components/          # High-fidelity Broadcast UI components
+│   ├── lib/                 # Zustand store, SoundManager, useOracle API hook
 │   ├── package.json
-│   └── Dockerfile
+│   └── Dockerfile           # Multi-stage standalone Next.js deployment
 ├── deploy.sh                # GCloud deploy & update script
 ├── docker-compose.yml       # Local dev with Docker
 ├── .env.example             # Environment variable template
+├── VibeStump_Solution.md    # Hackathon Submission Details
 └── README.md
 ```
 
@@ -60,8 +61,6 @@ bash deploy.sh env            # Changed only API keys? (instant, no rebuild)
 bash deploy.sh status         # Check live URLs
 ```
 
-> **Why is it fast?** After the first deploy, GCloud Build caches your Docker layers. Only changed layers are rebuilt. For env-only changes, `services update` is instant — no rebuild at all.
-
 ## Local Development
 
 ```bash
@@ -76,25 +75,24 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000. Demo Mode is ON by default — no API keys needed to explore.
+Open http://localhost:3000. Live Mode is ON by default.
 
 ## Environment Variables
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `GEMINI_API_KEY` | Yes | Powers Psychologist and Historian agents |
+| `GEMINI_API_KEY` | Yes | Powers Psychologist, Historian, Oracle, and Google Search agents |
 | `YOUTUBE_API_KEY` | No | Enables YouTube match highlight search |
-| `RAPIDAPI_KEY` | No | Enables live Cricbuzz data |
 
-Without optional keys, the app uses `live_sim.json` simulation data and fallback videos. The demo never crashes.
+Without optional keys, the app uses Gemini Simulation data and fallback videos. The demo never crashes.
 
 ## Key Features
 
 | Feature | Description |
 |---|---|
-| **Dynamic Team Theming** | 10 IPL teams. Select KKR → purple/gold. CSS variables, instant. |
-| **Tension Meter** | Recharts radial gauge (0–10) |
-| **Vibe Trend** | Area chart tracking emotional history across the match |
-| **Historian** | Gemini-generated IPL history on critical moments |
-| **Diversion Protocol** | Mock Swiggy/Netflix APIs when vibe drops below -7 |
-| **Agent Monologue** | Psychologist streams its "internal thoughts" to the UI |
+| **High-Fidelity Broadcast UI** | Massive Framer Motion animations for Wickets and Boundaries. |
+| **Oracle Mini-Game** | Predict the vibe of the next ball and win Fan Points. |
+| **Search-Enabled Chatbot** | Ask Gemini live questions with the Google Search Tool directly in the UI. |
+| **Dynamic Audio Sync** | Built-in `SoundManager` plays triggers like "Faah" when wickets fall. |
+| **Database Match Logging** | Scout Agent permanently stores internet scraped match data in an SQLite Database. |
+| **Dynamic Team Theming** | 10 IPL teams. Instant CSS variable shifts. |

@@ -48,7 +48,7 @@ export const useVibeStore = create<VibeState>((set) => ({
   selectedTeam: 'RCB',
   vibeHistory: [],
   ballCount: 0,
-  demoMode: true,
+  demoMode: false,
   diversionActive: false,
   diversionMessage: null,
   fanPoints: 0,

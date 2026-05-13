@@ -11,6 +11,7 @@ import time
 import random
 from pathlib import Path
 import httpx
+from database import store_match_event
 
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
@@ -84,6 +85,8 @@ class ScoutAgent:
             live_data = await self._scrape_live_match()
             if live_data:
                 self._history[index] = live_data
+                # Store in DB
+                store_match_event(index, live_data["score"], live_data["commentary"], is_live=True)
                 return
 
         # Fallback to Dynamic Simulator
@@ -100,6 +103,8 @@ class ScoutAgent:
             "score": self._sim_state,
             "commentary": self._sim_commentary
         }
+        # Store in DB
+        store_match_event(index, self._sim_state, self._sim_commentary, is_live=False)
 
     async def get_commentary(self, ball_index: int, demo_mode: bool = True) -> str:
         await self._ensure_ball(ball_index, demo_mode)

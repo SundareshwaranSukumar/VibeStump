@@ -54,6 +54,12 @@ export default function Home() {
         fetchScore(ballCount, demoMode),
         fetchCommentary(ballCount, demoMode),
       ]);
+      
+      // If live mode and commentary hasn't changed, do not process Oracle or animations
+      if (!demoMode && commentary === commData.commentary) {
+        return; // Wait for the next poll
+      }
+
       setScore(scoreData);
       setCommentary(commData.commentary);
 
@@ -78,12 +84,13 @@ export default function Home() {
     } catch (e) {
       console.error('[AgenticLoop]', e);
     }
-  }, [ballCount, demoMode, diversionActive, vibeHistory, addVibe, nextBall, setDiversion, selectedTeam, handleOracleResult]);
+  }, [ballCount, demoMode, diversionActive, vibeHistory, addVibe, nextBall, setDiversion, selectedTeam, handleOracleResult, commentary]);
 
   useEffect(() => {
     runAgentLoop();
     if (diversionActive) return;
-    const interval = setInterval(runAgentLoop, demoMode ? 8000 : 30000);
+    // Aggressive polling for live updates
+    const interval = setInterval(runAgentLoop, demoMode ? 8000 : 5000);
     return () => clearInterval(interval);
   }, [runAgentLoop, demoMode, diversionActive]);
 
