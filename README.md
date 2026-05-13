@@ -31,8 +31,7 @@ VibeStump/
 │   ├── lib/                 # Zustand store + API helpers
 │   ├── package.json
 │   └── Dockerfile
-├── deploy.sh                # One-command GCloud deploy
-├── deploy.ps1               # Windows PowerShell deploy
+├── deploy.sh                # GCloud deploy & update script
 ├── docker-compose.yml       # Local dev with Docker
 ├── .env.example             # Environment variable template
 └── README.md
@@ -40,45 +39,28 @@ VibeStump/
 
 ## Deploy to Google Cloud Run
 
-### Step 1: Clone and configure
+### Step 1: Configure
 ```bash
-git clone <repo-url> && cd VibeStump
-cp .env.example .env
-# Edit .env and add your GEMINI_API_KEY
-```
-
-### Step 2: Authenticate with GCloud
-```bash
+cp .env.example .env         # Add your GEMINI_API_KEY
 gcloud auth login
 gcloud config set project YOUR_PROJECT_ID
 ```
 
-### Step 3: Deploy (one command)
+### Step 2: First-time deploy
 ```bash
-bash deploy.sh
+bash deploy.sh setup
+```
+Builds and deploys both services. Prompts for API key if not in `.env`.
+
+### Step 3: After making changes
+```bash
+bash deploy.sh backend       # Changed backend code? (~2 min, uses build cache)
+bash deploy.sh frontend      # Changed frontend code? (~2 min, uses build cache)
+bash deploy.sh env            # Changed only API keys? (instant, no rebuild)
+bash deploy.sh status         # Check live URLs
 ```
 
-The script will:
-1. Prompt for your `GEMINI_API_KEY` if not set
-2. Deploy the FastAPI backend to Cloud Run
-3. Capture the backend URL automatically
-4. Deploy the Next.js frontend pointing to that backend
-5. Print the live URLs
-
-### Manual deploy (if you prefer)
-```bash
-# Backend
-gcloud run deploy vibestump-api \
-  --source ./backend --port 8000 --region asia-south1 \
-  --set-env-vars GEMINI_API_KEY="YOUR_KEY" \
-  --allow-unauthenticated
-
-# Frontend (replace BACKEND_URL with URL from above)
-gcloud run deploy vibestump-ui \
-  --source ./frontend --port 3000 --region asia-south1 \
-  --set-env-vars NEXT_PUBLIC_API_URL="BACKEND_URL" \
-  --allow-unauthenticated
-```
+> **Why is it fast?** After the first deploy, GCloud Build caches your Docker layers. Only changed layers are rebuilt. For env-only changes, `services update` is instant — no rebuild at all.
 
 ## Local Development
 
