@@ -1,3 +1,4 @@
+import time
 import json
 import random
 import requests
@@ -13,12 +14,12 @@ MEME_DICTIONARY = {
     "hype": "https://media.giphy.com/media/b1o4elHO8oqD1Fwx48/giphy.gif"
 }
 
-# High-Tension Demo Sequence (Final Over of a T20)
+# High-Tension Demo Sequence tuned to trigger Diversion Protocol (2 consecutive negative vibes)
 DEMO_COMMENTARY = [
     "19.1: A crucial dot ball to start the final over. The batsman swung hard but missed.",
     "19.2: Smashed! That's a massive SIX over long-on! The crowd erupts!",
-    "19.3: He tries to repeat the shot but gets a thick outside edge. They run two. Tension is building.",
-    "19.4: WICKET! Clean bowled! The yorker crashes into middle stump. The stadium falls silent.",
+    "19.3: WICKET! Caught at deep mid-wicket! A catastrophic blow for the batting side.",
+    "19.4: WICKET! Clean bowled! Another one bites the dust. It's an absolute collapse! The fans are devastated.",
     "19.5: The new batsman arrives. He drives it to cover for a single. 4 runs needed off the last ball!",
     "19.6: He steps out and launches it... it's high in the air... caught on the boundary! The bowling team wins an absolute thriller!"
 ]
@@ -33,8 +34,8 @@ def fetch_live_score(ball_index, demo_mode=False):
         idx = ball_index % len(DEMO_COMMENTARY)
         if idx >= 1: runs += 0   # 19.1
         if idx >= 2: runs += 6   # 19.2
-        if idx >= 3: runs += 2   # 19.3
-        if idx >= 4: wickets += 1 # 19.4
+        if idx >= 3: wickets += 1 # 19.3 (Wicket)
+        if idx >= 4: wickets += 1 # 19.4 (Wicket)
         if idx >= 5: runs += 1   # 19.5
         if idx == 5: wickets += 1 # 19.6 (end of sequence)
         overs = 19.0 + ((idx + 1) * 0.1)
@@ -91,3 +92,23 @@ def get_historical_context(event_type):
 def fetch_meme(mood):
     """The Executor: Uses a dictionary of high-quality Giphy URLs."""
     return MEME_DICTIONARY.get(mood.lower(), MEME_DICTIONARY["happy"])
+
+# --- Mock APIs for Diversion Protocol ---
+
+def mock_food_delivery_api(location="Bengaluru"):
+    """Simulates a call to a food delivery service."""
+    time.sleep(1.5) # Simulate network latency
+    foods = [
+        "Filter Coffee and Masala Dosa from MTR",
+        "Biryani from Meghana Foods",
+        "Gobi Manchurian from a local joint"
+    ]
+    choice = random.choice(foods)
+    return f"✅ Success! Ordering hot {choice} to {location}. ETA: 25 mins. The cricket can wait."
+
+def mock_netflix_api():
+    """Simulates a call to a streaming service API."""
+    time.sleep(1.0) # Simulate network latency
+    shows = ["The Office", "Brooklyn Nine-Nine", "Parks and Recreation"]
+    choice = random.choice(shows)
+    return f"📺 Success! Starting '{choice}' on your screen to lighten the mood. Time for a break."
