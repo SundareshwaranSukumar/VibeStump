@@ -1,65 +1,74 @@
-@startuml VibeStump Architecture
-!theme cyborg
-skinparam DefaultFontName Inter
-skinparam roundcorner 14
-skinparam backgroundColor #0B172A
-skinparam defaultFontColor #F8FAFC
+@startuml VibeStump_Architecture
 
-title **VibeStump — Agentic Premier League Architecture**
+skinparam defaultFontName Arial
+skinparam roundcorner 12
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontColor #333333
+skinparam packageBackgroundColor #F8F9FA
+skinparam nodeBackgroundColor #E8F0FE
+skinparam componentBackgroundColor #FFFFFF
+skinparam arrowColor #4285F4
 
-actor "Fan\n(Browser)" as fan #00F0FF
+title VibeStump - Agentic Premier League Architecture
 
-package "Google Cloud Run" <<cloud>> #1E293B {
+actor "Fan\n(Browser)" as Fan
 
-  node "Streamlit Container\n(app.py)" as ui #0B172A {
-    [ThemeManager\n(theme.py)] as TM
-    [Session State\nMemory] as SS
+rectangle "Google Cloud Run" {
+
+  node "Frontend Service\n(Next.js + Tailwind)" as FE {
+    [Zustand Store] as Store
+    [Recharts] as Charts
+    [TeamSelector] as Theme
   }
 
-  package "Agentic Modules" #1E293B {
-    [🔭 Scout Agent\n(tools.py)] as Scout
-    [🧠 Psychologist\n(agents.py)] as Psych
-    [📚 Historian\n(agents.py)] as Hist
-    [🎬 Executor\n(tools.py)] as Exec
-  }
+  node "Backend Service\n(FastAPI + Uvicorn)" as BE {
 
-  package "Fallback Layer" #1E293B {
-    [SimulatedLiveFeed\nMatch 57 Data] as Sim
-    [Meme Dictionary\nGiphy URLs] as Memes
-    [YouTube Fallbacks] as YTF
+    package "Agent Layer" {
+      [Scout Agent] as Scout
+      [Psychologist Agent] as Psych
+      [Historian Agent] as Hist
+      [Executor Agent] as Exec
+    }
+
+    package "Fallback Layer" {
+      [SimulatedLiveFeed\nlive_sim.json] as Sim
+      [Meme Dictionary] as Memes
+      [YouTube Fallbacks] as YTFall
+    }
   }
 }
 
-cloud "External APIs" #0F172A {
+cloud "External APIs" {
+  [Cricbuzz\nRapidAPI] as Cricbuzz
   [ESPNcricinfo\nRSS Feed] as RSS
-  [Google Gemini\n(2.5 Flash)] as Gemini
+  [Google Gemini\n2.5 Flash] as Gemini
   [YouTube\nData API v3] as YT
   [Swiggy / Netflix\n(Mock)] as Mock
 }
 
-' ── Data Flow ──
-fan --> ui : Auto-Refresh\n(8s demo / 30s live)
+' -- Data Flow --
+Fan --> FE : HTTPS\n(polling every 8-30s)
+FE --> BE : REST API\n(/api/score, /api/analyze, ...)
 
-ui --> Scout : 1. Fetch Data
-Scout --> RSS : HTTP GET
-Scout ..> Sim : Fallback\n(429/500)
+BE --> Scout
+Scout --> Cricbuzz : httpx async
+Scout --> RSS : httpx fallback
+Scout ..> Sim : local fallback\n(429/500 errors)
 
-ui --> Psych : 2. Analyze Vibe
-Psych --> Gemini : Structured JSON\nSchema
-Gemini ..> Psych : {vibe, tension,\nmood, event}
+BE --> Psych
+Psych --> Gemini : structured JSON\nschema output
 
-ui --> Hist : 3. Deep Dive\n(on WICKET/SIX)
-Hist --> Gemini : Historical Prompt
+BE --> Hist
+Hist --> Gemini : historical\nprompt + context
 
-ui --> Exec : 4. Trigger\nIntervention
-Exec --> Memes : Mood → GIF URL
+BE --> Exec
+Exec --> Memes : mood to GIF URL
+Exec --> Mock : Diversion Protocol
 
-ui --> YT : 5. Match VODs
-YT ..> YTF : Fallback
+BE --> YT : search highlights
+YT ..> YTFall : fallback videos
 
-ui --> Mock : Diversion\nProtocol
-
-TM --> ui : CSS Injection\n(Team Colors)
-SS --> ui : Vibe History\n(Trend Chart)
+Store --> Charts : vibe history\ntension data
+Theme --> Store : team colors\nCSS variables
 
 @enduml

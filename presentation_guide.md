@@ -1,55 +1,59 @@
-# 🏏 VibeStump: Presentation & Pitch Guide
+# VibeStump: Presentation & Pitch Guide
 
-*Keep this open during your hackathon pitch. It covers every talking point you need.*
+*Keep this open during your hackathon pitch.*
 
 ---
 
 ## 1. The Elevator Pitch (30 seconds)
 
-> "Cricket fans experience emotional whiplash every ball. VibeStump is an **agentic second-screen companion** — it watches the match alongside you, measures the tension using AI, deploys perfectly-timed memes when the hype peaks, and even orders you comfort food from Swiggy when your team collapses. It's powered by Google Gemini and runs serverlessly on Cloud Run."
+> "Cricket fans experience emotional whiplash every ball. VibeStump is an **agentic second-screen companion** — it watches the match alongside you, measures tension using AI, deploys memes when the hype peaks, and orders you comfort food from Swiggy when your team collapses. It's a Next.js + FastAPI app powered by Google Gemini, running serverlessly on Cloud Run."
 
 ## 2. The Problem
 
 - Fans experience extreme stress during close matches — no app addresses this.
 - Traditional scorecard apps are static, boring, and emotionally dead.
-- There's zero personalization or emotional intelligence.
+- Zero personalization or emotional intelligence.
 
-## 3. The Multi-Agent Architecture (The Differentiator)
+## 3. The Architecture (The Differentiator)
 
-This is what separates VibeStump from a simple chatbot:
+**Frontend:** Next.js (App Router) + Tailwind CSS + Zustand + Recharts
+**Backend:** FastAPI + Google Gemini 2.5 Flash + httpx
 
-1. 🔭 **Scout Agent** — Scrapes ESPNcricinfo RSS in real-time. If the API fails or rate-limits (429/500), it instantly switches to the `SimulatedLiveFeed` class. **The demo never crashes.**
-2. 🧠 **Psychologist Agent** — Powered by Gemini 2.5 Flash with Pydantic-enforced structured outputs. Outputs `{vibe_score, tension_index, meme_mood, is_critical_event}` in deterministic JSON. Sub-2 second latency.
-3. 📚 **Historian Agent** — Sleeps until the Psychologist flags a WICKET or SIX. Then wakes up, queries our stats database, and uses Gemini to generate a rich historical comparison (e.g., "This collapse is eerily similar to RCB's infamous 49 all-out against KKR in 2017...").
-4. 🎬 **Executor Agent** — Takes the Psychologist's mood output and fires a perfectly matching meme. Or, if the vibe is toxic for 2+ balls, triggers the **Diversion Protocol**.
+### Multi-Agent Pipeline (every 8 seconds):
 
-## 4. Technical Highlights (What Judges Care About)
+1. **Scout Agent** (`backend/tools.py`) — Fetches live data from Cricbuzz via httpx. If the API rate-limits (429/500), instantly falls back to `live_sim.json`. **The demo never crashes.**
+2. **Psychologist Agent** (`backend/agents.py`) — Gemini 2.5 Flash with Pydantic structured output. Returns `{vibe_score, tension_index, mood, agent_monologue}`. Includes an "internal monologue" that streams to the UI.
+3. **Historian Agent** (`backend/agents.py`) — Triggered on WICKET or SIX. Uses Gemini to generate historical comparisons (e.g., "This collapse mirrors RCB's infamous 49 all-out vs KKR in 2017").
+4. **Executor Agent** (`backend/tools.py`) — Fires mood-matched GIFs. If vibe drops below -7 for 2 consecutive balls, triggers the **Diversion Protocol** (mock Swiggy/Netflix APIs).
+
+## 4. Technical Highlights
 
 | Point | Detail |
 |---|---|
-| **Sub-3s Latency** | Raw `google-genai` SDK + Pydantic schemas. No Langchain overhead. |
-| **Stateful Memory** | The Vibe Trend area chart proves multi-turn memory — not a one-shot chatbot. |
-| **Automated Testing** | `tests/test_agent_loops.py` runs 20+ tests in CI without API keys. Show this to judges — most hackathon teams skip testing entirely. |
-| **CI/CD Pipeline** | `cloudbuild.yaml` runs Tests → Build → Deploy in one command. |
-| **Serverless Scaling** | Cloud Run auto-scales 0 → 10 during match peaks. Mention: "Real sports-tech needs this." |
-| **Dynamic Theming** | 10 IPL teams. Select KKR → purple/gold. Select CSK → yellow/blue. |
+| **Production Stack** | Next.js + FastAPI — not a Streamlit prototype |
+| **Sub-3s Latency** | Direct `google-genai` SDK + Pydantic. No LangChain overhead |
+| **Stateful Memory** | The Vibe Trend area chart proves multi-turn emotional memory |
+| **Dynamic Theming** | 10 IPL teams. Select KKR → purple/gold. CSS variables, instant |
+| **Serverless** | Cloud Run auto-scales 0→10 instances during match peaks |
+| **Zero Downtime** | Every external dependency has a local fallback |
 
 ## 5. Live Demo Script
 
 1. **Open the app.** Point out the glassmorphism dark-mode design.
-2. **Select a team** (e.g., RCB). Show the UI instantly retheming.
-3. **Toggle Demo Mode ON.** Let the auto-refresh run.
+2. **Select a team** (e.g., KKR). Watch the entire UI glow purple/gold instantly.
+3. **Demo Mode is ON by default.** The auto-refresh runs every 8 seconds.
 4. **Ball 3 (SIX):** "Notice the Historian Agent woke up with a Chris Gayle reference."
 5. **Balls 5-6 (WICKETS):** "Two consecutive negative vibes — watch the Diversion Protocol trigger."
-6. **Click 'Order Comfort Food.'** "Our mock Swiggy API just suggested Masala Dosa from MTR."
-7. **Click 'Back to Match.'** "And we're back. The agent loop resumes seamlessly."
-8. **Scroll down → Check 'Show Match VODs.'** "YouTube highlights right inside the app."
+6. **Click 'Order Comfort Food.'** "Our mock Swiggy API suggested Masala Dosa from MTR, Bengaluru."
+7. **Click 'Back to Match.'** "The agent loop resumes seamlessly."
+8. **Show the FastAPI docs** at `/docs`. "Every agent is a REST endpoint. Fully testable."
 
 ## 6. When Judges Ask Hard Questions
 
-- **"What if the API breaks?"** → "Every external dependency has a local fallback. The app literally cannot crash."
-- **"How is this different from a chatbot?"** → "Point to the Vibe Trend chart — it proves session memory across the entire match."
-- **"Can this scale?"** → "Cloud Run, serverless, auto-scales to 10 instances. Plus our Docker image uses multi-stage builds to keep it under 100MB."
+- **"What if the API breaks?"** → "Every external dependency has a local fallback. The `SimulatedLiveFeed` class streams real Match 57 data. The demo literally cannot crash."
+- **"How is this different from a chatbot?"** → "Point to the Vibe Trend chart — it proves persistent emotional memory across the entire match. Chatbots are stateless."
+- **"Can this scale?"** → "Two independent Cloud Run services. Backend and frontend scale independently. Auto-scales 0→10."
+- **"Why not LangChain?"** → "Direct SDK call + Pydantic schema = sub-2 second structured output. LangChain would add 500ms+ overhead for zero benefit."
 
 ## 7. Future Roadmap
 

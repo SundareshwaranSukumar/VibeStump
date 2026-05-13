@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+/* ── CSS Variables (dynamic team theming) ──────────────────────────── */
+:root {
+  --color-primary: 0, 240, 255;       /* Default neon blue */
+  --color-secondary: 255, 215, 0;     /* Gold */
+  --color-bg: 2, 6, 23;              /* #020617 */
+  --color-surface: 15, 23, 42;       /* slate-900 */
+  --color-text: 248, 250, 252;
+  --color-muted: 148, 163, 184;
+}
+
+/* ── Base ──────────────────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+
+body {
+  background: rgb(var(--color-bg));
+  color: rgb(var(--color-text));
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* ── Glassmorphism Card ───────────────────────────────────────────── */
+.glass {
+  background: rgba(var(--color-surface), 0.55);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(var(--color-text), 0.06);
+  border-radius: 16px;
+}
+
+/* ── Glow effects ─────────────────────────────────────────────────── */
+.glow-border {
+  border: 1px solid rgba(var(--color-primary), 0.3);
+  box-shadow: 0 0 20px rgba(var(--color-primary), 0.08),
+              inset 0 0 20px rgba(var(--color-primary), 0.03);
+}
+
+.glow-text {
+  color: rgb(var(--color-primary));
+  text-shadow: 0 0 12px rgba(var(--color-primary), 0.5);
+}
+
+.glow-pulse {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(var(--color-primary), 0.2); }
+  50% { box-shadow: 0 0 24px rgba(var(--color-primary), 0.4); }
+}
+
+/* ── Momentum indicator ───────────────────────────────────────────── */
+.momentum-bar {
+  background: linear-gradient(90deg,
+    rgba(var(--color-primary), 0.1),
+    rgba(var(--color-primary), 0.6),
+    rgba(var(--color-primary), 0.1));
+  animation: momentum-shift 3s ease-in-out infinite;
+}
+
+@keyframes momentum-shift {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: rgba(var(--color-surface), 0.3); }
+::-webkit-scrollbar-thumb {
+  background: rgba(var(--color-primary), 0.3);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(var(--color-primary), 0.5); }
