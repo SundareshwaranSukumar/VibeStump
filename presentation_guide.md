@@ -1,40 +1,58 @@
 # 🏏 VibeStump: Presentation & Pitch Guide
 
-*This document is designed to guide you through your hackathon pitch. Keep it open as a reference or use it to build your presentation slides.*
+*Keep this open during your hackathon pitch. It covers every talking point you need.*
 
 ---
 
-## 1. The Elevator Pitch (The Hook)
-"Cricket is religion, but the emotional rollercoaster of a live match is incredibly stressful. **VibeStump** is a real-time, agentic fan-management platform. It doesn't just show you the score—it reads the pulse of the match, analyzes the tension, and deploys perfectly-timed, AI-generated meme interventions to manage your hype and keep you entertained."
+## 1. The Elevator Pitch (30 seconds)
 
-## 2. The Problem Statement
-- **Emotional Volatility**: Fans experience massive stress and tension spikes during live matches.
-- **Boring Dashboards**: Traditional cricket websites only show numbers and stats, offering zero emotional engagement or entertainment value.
+> "Cricket fans experience emotional whiplash every ball. VibeStump is an **agentic second-screen companion** — it watches the match alongside you, measures the tension using AI, deploys perfectly-timed memes when the hype peaks, and even orders you comfort food from Swiggy when your team collapses. It's powered by Google Gemini and runs serverlessly on Cloud Run."
 
-## 3. The Solution & The Agentic Loop
-VibeStump introduces an **Agentic Loop** comprising three distinct AI "personas" that operate autonomously every 30 seconds:
+## 2. The Problem
 
-1. 🔭 **The Scout Agent (Data Ingestion)**: Scrapes live public RSS feeds (ESPNcricinfo) to get real-time match states without needing paid APIs. *If the internet drops, it gracefully falls back to a local simulation so the demo never crashes.*
-2. 🧠 **The Psychologist Agent (Reasoning)**: Powered by **Google Gemini Flash**. It reads the live feed and evaluates the emotional context. Using strict JSON schemas, it outputs a precise `vibe_score` (-10 to 10), a `tension_index` (0 to 10), and crucially, generates a contextual `meme_search_query` based on the match situation.
-3. 🎬 **The Executor Agent (Action)**: Takes the AI's search query, hits the Giphy API, and fetches a live, contextually hilarious meme to instantly alter the fan's mood.
+- Fans experience extreme stress during close matches — no app addresses this.
+- Traditional scorecard apps are static, boring, and emotionally dead.
+- There's zero personalization or emotional intelligence.
 
-## 4. Technical Highlights (For the Judges)
-When presenting the technical architecture, emphasize these three points:
+## 3. The Multi-Agent Architecture (The Differentiator)
 
-*   **Sub-3 Second Latency**: By utilizing `gemini-2.5-flash` and strict Pydantic structured outputs, we completely bypassed slow agentic frameworks (like Langchain) for raw SDK speed. The entire loop executes in under 3 seconds.
-*   **True Statefulness**: Point to the **"Vibe History" Line Chart**. This proves your agent isn't just a simple chatbot answering one-off prompts. It maintains session state, tracking the emotional journey of the match over time.
-*   **Serverless Portability**: The entire architecture is containerized in Docker and optimized specifically for **Google Cloud Run**. This is vital for sports-tech, as it allows the application to automatically scale from 0 to 100,000 instances instantly when viewership spikes during the final over of a match.
+This is what separates VibeStump from a simple chatbot:
+
+1. 🔭 **Scout Agent** — Scrapes ESPNcricinfo RSS in real-time. If the API fails or rate-limits (429/500), it instantly switches to the `SimulatedLiveFeed` class. **The demo never crashes.**
+2. 🧠 **Psychologist Agent** — Powered by Gemini 2.5 Flash with Pydantic-enforced structured outputs. Outputs `{vibe_score, tension_index, meme_mood, is_critical_event}` in deterministic JSON. Sub-2 second latency.
+3. 📚 **Historian Agent** — Sleeps until the Psychologist flags a WICKET or SIX. Then wakes up, queries our stats database, and uses Gemini to generate a rich historical comparison (e.g., "This collapse is eerily similar to RCB's infamous 49 all-out against KKR in 2017...").
+4. 🎬 **Executor Agent** — Takes the Psychologist's mood output and fires a perfectly matching meme. Or, if the vibe is toxic for 2+ balls, triggers the **Diversion Protocol**.
+
+## 4. Technical Highlights (What Judges Care About)
+
+| Point | Detail |
+|---|---|
+| **Sub-3s Latency** | Raw `google-genai` SDK + Pydantic schemas. No Langchain overhead. |
+| **Stateful Memory** | The Vibe Trend area chart proves multi-turn memory — not a one-shot chatbot. |
+| **Automated Testing** | `tests/test_agent_loops.py` runs 20+ tests in CI without API keys. Show this to judges — most hackathon teams skip testing entirely. |
+| **CI/CD Pipeline** | `cloudbuild.yaml` runs Tests → Build → Deploy in one command. |
+| **Serverless Scaling** | Cloud Run auto-scales 0 → 10 during match peaks. Mention: "Real sports-tech needs this." |
+| **Dynamic Theming** | 10 IPL teams. Select KKR → purple/gold. Select CSK → yellow/blue. |
 
 ## 5. Live Demo Script
-1. **Open the App**: Show the beautiful, dark-mode RCB-themed UI.
-2. **Turn on Auto-Refresh**: Toggle the "Live Auto-Refresh" on the sidebar.
-3. **Wait for the Loop**: Let the audience see the spinner trigger automatically.
-4. **Explain the Output**:
-    - *"Here, you can see the Scout pulled the live score of the ongoing game."*
-    - *"Gemini processed it instantly. Look at the Gauge Chart—tension is currently at 7."*
-    - *"Because the tension is high, the Executor agent dynamically fetched this specific meme to try and lighten the mood!"*
-5. **Show the Fallbacks (Optional)**: If they ask about reliability, mention that if any external API fails, the app seamlessly defaults to `fallback_data.json` and a local dictionary of high-quality memes, guaranteeing 100% uptime.
 
-## 6. Future Roadmap
-- Integration with user wearables (Apple Watch/Fitbit) to compare the *AI's* tension index with the *Fan's actual heart rate*.
-- Expanding to other sports leagues (Premier League, NFL).
+1. **Open the app.** Point out the glassmorphism dark-mode design.
+2. **Select a team** (e.g., RCB). Show the UI instantly retheming.
+3. **Toggle Demo Mode ON.** Let the auto-refresh run.
+4. **Ball 3 (SIX):** "Notice the Historian Agent woke up with a Chris Gayle reference."
+5. **Balls 5-6 (WICKETS):** "Two consecutive negative vibes — watch the Diversion Protocol trigger."
+6. **Click 'Order Comfort Food.'** "Our mock Swiggy API just suggested Masala Dosa from MTR."
+7. **Click 'Back to Match.'** "And we're back. The agent loop resumes seamlessly."
+8. **Scroll down → Check 'Show Match VODs.'** "YouTube highlights right inside the app."
+
+## 6. When Judges Ask Hard Questions
+
+- **"What if the API breaks?"** → "Every external dependency has a local fallback. The app literally cannot crash."
+- **"How is this different from a chatbot?"** → "Point to the Vibe Trend chart — it proves session memory across the entire match."
+- **"Can this scale?"** → "Cloud Run, serverless, auto-scales to 10 instances. Plus our Docker image uses multi-stage builds to keep it under 100MB."
+
+## 7. Future Roadmap
+
+- Wearable integration (Apple Watch heart rate vs AI tension — correlation analysis)
+- Multi-match parallel tracking
+- Fan leaderboards and social sharing

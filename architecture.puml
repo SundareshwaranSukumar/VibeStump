@@ -1,50 +1,65 @@
 @startuml VibeStump Architecture
-!theme plain
-skinparam backgroundColor #FFFFFF
-skinparam DefaultFontName Arial
-skinparam roundcorner 10
-skinparam componentStyle uml2
+!theme cyborg
+skinparam DefaultFontName Inter
+skinparam roundcorner 14
+skinparam backgroundColor #0B172A
+skinparam defaultFontColor #F8FAFC
 
-package "Client Layer" {
-  [Streamlit UI\n(Fan Dashboard)] as UI
-}
+title **VibeStump — Agentic Premier League Architecture**
 
-package "Google Cloud Run (Serverless)" {
-  node "VibeStump Container" {
-    
-    [Auto-Refresh Loop\n(State Management)] as State
-    
-    package "Agentic Modules" {
-      [The Scout Agent\n(tools.py)] as Scout
-      [The Psychologist Agent\n(agents.py)] as Psychologist
-      [The Executor Agent\n(tools.py)] as Executor
-    }
-    
-    [Config & Theming\n(utils.py)] as Utils
+actor "Fan\n(Browser)" as fan #00F0FF
+
+package "Google Cloud Run" <<cloud>> #1E293B {
+
+  node "Streamlit Container\n(app.py)" as ui #0B172A {
+    [ThemeManager\n(theme.py)] as TM
+    [Session State\nMemory] as SS
+  }
+
+  package "Agentic Modules" #1E293B {
+    [🔭 Scout Agent\n(tools.py)] as Scout
+    [🧠 Psychologist\n(agents.py)] as Psych
+    [📚 Historian\n(agents.py)] as Hist
+    [🎬 Executor\n(tools.py)] as Exec
+  }
+
+  package "Fallback Layer" #1E293B {
+    [SimulatedLiveFeed\nMatch 57 Data] as Sim
+    [Meme Dictionary\nGiphy URLs] as Memes
+    [YouTube Fallbacks] as YTF
   }
 }
 
-cloud "External Services" {
-  [ESPNcricinfo RSS\n(Live Match Feed)] as RSS
-  [Google Gemini API\n(gemini-2.5-flash)] as Gemini
-  [Giphy API\n(Visual Interventions)] as Giphy
+cloud "External APIs" #0F172A {
+  [ESPNcricinfo\nRSS Feed] as RSS
+  [Google Gemini\n(2.5 Flash)] as Gemini
+  [YouTube\nData API v3] as YT
+  [Swiggy / Netflix\n(Mock)] as Mock
 }
 
-' Data Flow
-UI <--> State : "30s Polling / User Inputs"
-State --> Scout : "1. Fetch Match State"
-Scout --> RSS : "HTTP GET (XML)"
-State --> Psychologist : "2. Analyze Context"
-Psychologist --> Gemini : "Prompt + Structured Schema"
-Gemini -.> Psychologist : "JSON (Vibe, Tension, Query)"
-State --> Executor : "3. Trigger Intervention"
-Executor --> Giphy : "Search GIF by Query"
+' ── Data Flow ──
+fan --> ui : Auto-Refresh\n(8s demo / 30s live)
 
-' Fallbacks
-Scout -[dotted]-> [fallback_data.json] : "Fallback on Network Error"
-Executor -[dotted]-> [Hardcoded Memes] : "Fallback on API Error"
+ui --> Scout : 1. Fetch Data
+Scout --> RSS : HTTP GET
+Scout ..> Sim : Fallback\n(429/500)
 
-' Return Flow
-State --> UI : "Render Gauge, Charts & Memes"
+ui --> Psych : 2. Analyze Vibe
+Psych --> Gemini : Structured JSON\nSchema
+Gemini ..> Psych : {vibe, tension,\nmood, event}
+
+ui --> Hist : 3. Deep Dive\n(on WICKET/SIX)
+Hist --> Gemini : Historical Prompt
+
+ui --> Exec : 4. Trigger\nIntervention
+Exec --> Memes : Mood → GIF URL
+
+ui --> YT : 5. Match VODs
+YT ..> YTF : Fallback
+
+ui --> Mock : Diversion\nProtocol
+
+TM --> ui : CSS Injection\n(Team Colors)
+SS --> ui : Vibe History\n(Trend Chart)
 
 @enduml
