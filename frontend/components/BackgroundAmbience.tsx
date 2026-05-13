@@ -1,7 +1,7 @@
-// @ts-nocheck
 'use client';
 
-import ReactPlayer from 'react-player';
+import dynamic from 'next/dynamic';
+const ReactPlayer = dynamic(() => import('react-player'), { ssr: false });
 import { useVibeStore } from '@/lib/store';
 import { useEffect, useState } from 'react';
 
@@ -24,10 +24,11 @@ export default function BackgroundAmbience() {
 
   const videoUrl = TEAM_VIDEOS[selectedTeam] || TEAM_VIDEOS.RCB;
 
+  const Player = ReactPlayer as any;
   return (
     <div className="fixed inset-0 -z-10 overflow-hidden bg-black pointer-events-none">
       <div className="absolute inset-0 opacity-20 scale-150">
-        <ReactPlayer
+        <Player
           url={videoUrl}
           playing
           loop

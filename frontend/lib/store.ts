@@ -57,7 +57,7 @@ export function getLogoForTeamName(title: string): string {
 
 export interface VibeState {
   selectedTeam: TeamName;
-  vibeHistory: number[];
+  vibeHistory: any[]; // Stores history of score objects for graphing
   ballCount: number;
   demoMode: boolean;
   diversionActive: boolean;
@@ -66,7 +66,7 @@ export interface VibeState {
   currentPrediction: string | null;
   selectedMatchId: string | null;
   setTeam: (team: TeamName) => void;
-  addVibe: (score: number) => void;
+  addVibe: (score: any) => void;
   nextBall: () => void;
   resetMatch: () => void;
   setDiversion: (active: boolean, msg?: string | null) => void;

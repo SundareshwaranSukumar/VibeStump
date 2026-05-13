@@ -69,14 +69,14 @@ export default function Home() {
       ]);
 
       setAnalysis(vibeRes);
-      addVibe(vibeRes.vibe_score);
+      addVibe({ vibe: vibeRes.vibe_score, score: scoreData });
 
       setOracleResult({ eventType: oracleRes.eventType, reaction: oracleRes.reaction });
       handleOracleResult(oracleRes);
 
       // Diversion check
-      const vh = [...vibeHistory, vibeRes.vibe_score];
-      if (vh.length >= 2 && vh[vh.length - 1] < -7 && vh[vh.length - 2] < -7) {
+      const vh = [...vibeHistory, { vibe: vibeRes.vibe_score }];
+      if (vh.length >= 2 && vh[vh.length - 1].vibe < -7 && vh[vh.length - 2].vibe < -7) {
         setDiversion(true);
         return;
       }

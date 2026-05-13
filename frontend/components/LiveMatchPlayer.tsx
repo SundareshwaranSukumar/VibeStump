@@ -1,11 +1,14 @@
 'use client';
 
-import ReactPlayer from 'react-player';
+import dynamic from 'next/dynamic';
+
+const ReactPlayer = dynamic(() => import('react-player'), { ssr: false });
 
 export default function LiveMatchPlayer() {
+  const Player = ReactPlayer as any;
   return (
     <div className="w-full aspect-video rounded-xl overflow-hidden shadow-[0_0_40px_rgba(0,0,0,0.6)] border border-white/10 relative group bg-black">
-      <ReactPlayer
+      <Player
         url="https://www.youtube.com/watch?v=v29Y-V0-I-s"
         playing={true}
         muted={true}

@@ -21,10 +21,12 @@ export default function MatchFeed({
   const { vibeHistory } = useVibeStore();
   
   // Convert vibeHistory to runs vs overs for the graph
-  const graphData = vibeHistory.map((v, idx) => ({
-    over: parseFloat(v.score.overs) || idx,
-    runs: v.score.runs
-  })).slice(-15); // Show last 15 data points
+  const graphData = vibeHistory
+    .filter(v => v && v.score)
+    .map((v, idx) => ({
+      over: parseFloat(v.score.overs) || idx,
+      runs: v.score.runs
+    })).slice(-15); // Show last 15 data points
 
   const eventColor =
     analysis?.event_type === 'WICKET' ? '#EF4444' :

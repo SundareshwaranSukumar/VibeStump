@@ -6,7 +6,9 @@ import { fetchMatches, fetchHighlights } from '@/lib/api';
 
 export default function TournamentHub() {
   const { demoMode, toggleDemo, resetMatch, ballCount, selectedMatchId, setSelectedMatchId } = useVibeStore();
+  const [matches, setMatches] = useState<any[]>([]);
   const [pointsTable, setPointsTable] = useState<any[]>([]);
+  const [highlights, setHighlights] = useState<any[]>([]);
   const [selectedTeamInfo, setSelectedTeamInfo] = useState<any | null>(null);
 
   useEffect(() => {
@@ -135,7 +137,7 @@ export default function TournamentHub() {
               <div>
                 <h4 className="text-[10px] font-bold text-[rgb(var(--color-primary))] uppercase mb-2">Upcoming Matches</h4>
                 <div className="space-y-1">
-                  {selectedTeamInfo.upcoming.map((m, i) => (
+                  {selectedTeamInfo.upcoming.map((m: string, i: number) => (
                     <div key={i} className="text-sm bg-white/5 p-2 rounded border border-white/5">{m}</div>
                   ))}
                 </div>
@@ -143,7 +145,7 @@ export default function TournamentHub() {
               <div>
                 <h4 className="text-[10px] font-bold text-[rgb(var(--color-secondary))] uppercase mb-2">Previous Results</h4>
                 <div className="space-y-1">
-                  {selectedTeamInfo.previous.map((m, i) => (
+                  {selectedTeamInfo.previous.map((m: string, i: number) => (
                     <div key={i} className="text-sm bg-white/5 p-2 rounded border border-white/5 opacity-70">{m}</div>
                   ))}
                 </div>
