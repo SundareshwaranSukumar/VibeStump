@@ -6,15 +6,8 @@ const nextConfig = {
       { protocol: 'https', hostname: 'media.giphy.com' },
       { protocol: 'https', hostname: 'i.ytimg.com' },
       { protocol: 'https', hostname: '*.ggpht.com' },
+      { protocol: 'https', hostname: 'media.tenor.com' }
     ],
-  },
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${process.env.API_URL || 'http://localhost:8000'}/api/:path*`,
-      },
-    ];
   },
 };
 

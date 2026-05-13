@@ -2,6 +2,7 @@
 
 import TensionGauge from './TensionGauge';
 import VibeTrend from './VibeTrend';
+import PitchMap from './PitchMap';
 
 interface Analysis {
   tension_index: number;
@@ -43,6 +44,15 @@ export default function MatchFeed({
            style={{ borderLeft: `3px solid ${eventColor}`, paddingLeft: '16px' }}>
           {commentary || 'Waiting for match data...'}
         </p>
+      </div>
+
+      {/* Pitch Map */}
+      <div className="glass glow-border p-4">
+        <h3 className="text-xs font-bold uppercase tracking-wider mb-3"
+            style={{ color: 'rgb(var(--color-secondary))' }}>
+          📍 Ball Tracking Simulator
+        </h3>
+        <PitchMap />
       </div>
 
       {/* Charts Row */}

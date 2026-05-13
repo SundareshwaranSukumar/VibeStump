@@ -13,15 +13,8 @@ interface Analysis {
   is_critical_event: boolean;
   event_type: string;
   agent_monologue: string;
+  meme_url: string;
 }
-
-const MEME_URLS: Record<string, string> = {
-  happy: 'https://media.giphy.com/media/26n6R5HOYPbekK0YE/giphy.gif',
-  sad:   'https://media.giphy.com/media/d2lcHJTG5Tscg/giphy.gif',
-  tense: 'https://media.giphy.com/media/l4FATJpd4LWgeruTK/giphy.gif',
-  angry: 'https://media.giphy.com/media/11tTNkNy1SdXGg/giphy.gif',
-  hype:  'https://media.giphy.com/media/b1o4elHO8oqD1Fwx48/giphy.gif',
-};
 
 export default function AgentIntelligence({ analysis }: { analysis: Analysis | null }) {
   const { diversionActive } = useVibeStore();
@@ -42,7 +35,7 @@ export default function AgentIntelligence({ analysis }: { analysis: Analysis | n
   }
 
   const mood = analysis?.fallback_mood || 'happy';
-  const memeUrl = MEME_URLS[mood] || MEME_URLS.happy;
+  const memeUrl = analysis?.meme_url || 'https://media.giphy.com/media/26n6R5HOYPbekK0YE/giphy.gif';
 
   return (
     <div className="space-y-4">
@@ -95,19 +88,19 @@ export default function AgentIntelligence({ analysis }: { analysis: Analysis | n
         </div>
       )}
 
-      {/* Meme */}
+      {/* Dynamic Meme */}
       <div className="glass glow-border p-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-bold uppercase tracking-wider"
                 style={{ color: 'rgba(var(--color-muted))' }}>
-            🎭 Agent Mood: {mood.toUpperCase()}
+            🎭 Dynamic Agent Mood: {mood.toUpperCase()}
           </span>
         </div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={memeUrl}
           alt={`Mood: ${mood}`}
-          className="w-full rounded-xl"
+          className="w-full rounded-xl shadow-lg"
           style={{ maxHeight: '220px', objectFit: 'cover' }}
         />
       </div>

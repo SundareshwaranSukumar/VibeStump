@@ -138,3 +138,71 @@ def generate_historical_insight(event_type: str, context_data: str) -> str:
     except Exception as e:
         print(f"[Historian] Error: {e}")
         return f"📚 {context_data}"
+
+
+# ── Dynamic Match Simulator ──────────────────────────────────────────
+class MatchSimulationResult(BaseModel):
+    commentary: str = Field(description="The ball-by-ball commentary text (e.g., '19.2: Starc to Kohli, SIX! Absolute massive strike over long on!')")
+    runs: int = Field(description="Total team runs after this ball")
+    wickets: int = Field(description="Total team wickets after this ball")
+    overs: str = Field(description="Current over (e.g., '19.2')")
+    run_rate: float = Field(description="Current run rate")
+    target: int = Field(description="Target score for the chasing team")
+    batting: str = Field(description="Batting team name")
+    bowling: str = Field(description="Bowling team name")
+    required_rate: float = Field(description="Required run rate")
+
+_SIMULATOR_PROMPT = """You are a dynamic cricket match simulator.
+Generate the next ball's outcome and commentary for a tense IPL match (RCB vs KKR).
+Previous state:
+{prev_state}
+
+Rules:
+1. Make the commentary sound exactly like a professional live text commentary feed. Include bowler, batsman, and the action.
+2. Update the score logically based on what happened in this ball.
+3. Advance the over count logically (e.g., 19.1 -> 19.2).
+4. Occasionally generate boundaries (FOUR, SIX) or WICKETs to keep it exciting.
+
+Generate the updated state in JSON:"""
+
+def simulate_next_ball(prev_state: dict) -> MatchSimulationResult:
+    if not _client:
+        # Fallback offline simulation
+        return _offline_simulation(prev_state)
+    try:
+        resp = _client.models.generate_content(
+            model=_MODEL,
+            contents=_SIMULATOR_PROMPT.format(prev_state=json.dumps(prev_state)),
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=MatchSimulationResult,
+                temperature=0.8,
+            ),
+        )
+        if hasattr(resp, "parsed") and resp.parsed:
+            return resp.parsed
+        return MatchSimulationResult(**json.loads(resp.text))
+    except Exception as e:
+        print(f"[Simulator] Error: {e}")
+        return _offline_simulation(prev_state)
+
+def _offline_simulation(prev: dict) -> MatchSimulationResult:
+    import random
+    runs = prev.get("runs", 150) + random.choice([0, 1, 2, 4, 6])
+    wickets = prev.get("wickets", 4)
+    overs_str = prev.get("overs", "15.0")
+    try:
+        o, b = map(int, str(overs_str).split('.'))
+    except:
+        o, b = 15, 0
+    b += 1
+    if b > 6:
+        o += 1
+        b = 1
+    new_overs = f"{o}.{b}"
+    return MatchSimulationResult(
+        commentary=f"{new_overs}: Bowler to Batsman, and it's played for runs. (Offline Simulation)",
+        runs=runs, wickets=wickets, overs=new_overs, run_rate=runs/(o+b/6),
+        target=195, batting="RCB", bowling="KKR", required_rate=10.5
+    )
+

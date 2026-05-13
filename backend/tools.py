@@ -44,88 +44,76 @@ HISTORICAL_DB = {
 
 
 class ScoutAgent:
-    """Fetches live cricket data. Falls back to simulation on error."""
+    """Fetches live cricket data using BeautifulSoup, falls back to Dynamic Simulator."""
 
     def __init__(self):
-        self._sim_data = self._load_sim()
+        self._history = {}
+        self._sim_state = {
+            "runs": 150, "wickets": 4, "overs": "15.0", "run_rate": 10.0,
+            "target": 195, "batting": "RCB", "bowling": "KKR", "required_rate": 9.0
+        }
+        self._sim_commentary = "15.0: The players are walking out to the middle. This is going to be an epic finish!"
 
-    def _load_sim(self) -> list:
+    async def _scrape_live_match(self) -> dict | None:
         try:
-            with open(_SIM_PATH, "r") as f:
-                return json.load(f)
-        except Exception:
-            return []
-
-    async def get_commentary(self, ball_index: int, demo_mode: bool = True) -> str:
-        if demo_mode:
-            return self._sim_commentary(ball_index)
-        # Try live API
-        if RAPIDAPI_KEY:
-            try:
-                async with httpx.AsyncClient(timeout=5.0) as client:
-                    resp = await client.get(
-                        "https://cricbuzz-cricket.p.rapidapi.com/matches/v1/recent",
-                        headers={
-                            "X-RapidAPI-Key": RAPIDAPI_KEY,
-                            "X-RapidAPI-Host": "cricbuzz-cricket.p.rapidapi.com",
-                        },
-                    )
-                    if resp.status_code in (429, 500, 502, 503):
-                        raise httpx.HTTPStatusError(
-                            f"HTTP {resp.status_code}", request=resp.request, response=resp)
-                    resp.raise_for_status()
-                    # Parse the response for commentary
-                    data = resp.json()
-                    matches = data.get("typeMatches", [])
-                    if matches:
-                        first = matches[0].get("seriesMatches", [{}])[0]
-                        info = first.get("seriesAdWrapper", {}).get("matches", [{}])[0]
-                        desc = info.get("matchInfo", {}).get("status", "Live match in progress")
-                        return f"🚨 LIVE: {desc}"
-            except Exception as e:
-                print(f"[Scout] API error: {e}. Falling back to simulation.")
-        # Fallback: RSS
-        try:
+            # We scrape a generic cricket live scores page or RSS
+            import xml.etree.ElementTree as ET
             async with httpx.AsyncClient(timeout=5.0) as client:
                 resp = await client.get(
                     "http://static.cricinfo.com/rss/livescores.xml",
                     headers={"User-Agent": "Mozilla/5.0"},
                 )
                 resp.raise_for_status()
-                import xml.etree.ElementTree as ET
                 tree = ET.fromstring(resp.content)
                 items = tree.findall(".//item")
                 if items:
-                    titles = [i.find("title").text for i in items if i.find("title") is not None]
-                    return f"🚨 LIVE: {titles[ball_index % len(titles)]}"
-        except Exception:
-            pass
-        return self._sim_commentary(ball_index)
+                    title = items[0].find("title").text if items[0].find("title") is not None else "LIVE: Match in progress"
+                    return {"commentary": f"🚨 {title}", "score": {
+                        "runs": 0, "wickets": 0, "overs": "0.0", "run_rate": 0,
+                        "target": "—", "batting": "LIVE", "bowling": "LIVE", "required_rate": 0
+                    }}
+        except Exception as e:
+            print(f"[Scout] Scrape failed: {e}")
+        return None
 
-    def _sim_commentary(self, index: int) -> str:
-        if not self._sim_data:
-            return "19.1: Dot ball. Pressure mounting."
-        return self._sim_data[index % len(self._sim_data)].get(
-            "commentary", "Ball in play.")
+    async def _ensure_ball(self, index: int, demo_mode: bool):
+        if index in self._history:
+            return
+            
+        if not demo_mode:
+            live_data = await self._scrape_live_match()
+            if live_data:
+                self._history[index] = live_data
+                return
+
+        # Fallback to Dynamic Simulator
+        from agents import simulate_next_ball
+        result = simulate_next_ball(self._sim_state)
+        self._sim_state = {
+            "runs": result.runs, "wickets": result.wickets, "overs": result.overs,
+            "run_rate": result.run_rate, "target": result.target,
+            "batting": result.batting, "bowling": result.bowling,
+            "required_rate": result.required_rate
+        }
+        self._sim_commentary = result.commentary
+        self._history[index] = {
+            "score": self._sim_state,
+            "commentary": self._sim_commentary
+        }
+
+    async def get_commentary(self, ball_index: int, demo_mode: bool = True) -> str:
+        await self._ensure_ball(ball_index, demo_mode)
+        return self._history[ball_index]["commentary"]
 
     def get_scorecard(self, ball_index: int, demo_mode: bool = True) -> dict:
-        if demo_mode and self._sim_data:
-            ball = self._sim_data[ball_index % len(self._sim_data)]
-            return {
-                "runs": ball.get("runs", 0),
-                "wickets": ball.get("wickets", 0),
-                "overs": ball.get("overs", 0),
-                "run_rate": ball.get("run_rate", 0),
-                "target": ball.get("target", 195),
-                "batting": ball.get("batting", "RCB"),
-                "bowling": ball.get("bowling", "KKR"),
-                "required_rate": ball.get("required_rate", 0),
-            }
-        return {
-            "runs": 0, "wickets": 0, "overs": 0, "run_rate": 0,
-            "target": "—", "batting": "LIVE", "bowling": "LIVE",
-            "required_rate": 0,
-        }
+        # get_score is called synchronously, but it's safe if get_commentary was called first.
+        # In main.py, it's called asynchronously but ScoutAgent's get_scorecard is sync.
+        # However, we can't reliably await inside get_scorecard if it's sync.
+        # Actually, in main.py `get_score` does not await `get_scorecard`.
+        # Let's just return the last known state if index not in history.
+        if ball_index in self._history:
+            return self._history[ball_index]["score"]
+        return self._sim_state
 
 
 def get_historical_context(event_type: str) -> str:
@@ -133,7 +121,19 @@ def get_historical_context(event_type: str) -> str:
     return random.choice(facts) if facts else "A key moment in the match."
 
 
-def fetch_meme(mood: str) -> str:
+async def fetch_meme(mood: str, search_query: str = "") -> str:
+    query = search_query if search_query else f"cricket {mood}"
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get(
+                "https://g.tenor.com/v1/search",
+                params={"q": query, "key": "LIVDSRZULELA", "limit": 1}
+            )
+            data = resp.json()
+            if data.get("results"):
+                return data["results"][0]["media"][0]["gif"]["url"]
+    except Exception as e:
+        print(f"[Tenor] Error: {e}")
     return MEME_DICTIONARY.get(mood.lower(), MEME_DICTIONARY["happy"])
 
 

@@ -94,7 +94,14 @@ async def get_commentary(ball: int = 0, demo: bool = True):
 async def analyze(req: AnalyzeRequest):
     """Runs the Psychologist Agent on commentary."""
     result = analyze_commentary(req.commentary)
-    return result.model_dump()
+    
+    # Dynamically fetch meme using Tenor API
+    from tools import fetch_meme
+    meme_url = await fetch_meme(result.fallback_mood, result.meme_search_query)
+    
+    data = result.model_dump()
+    data["meme_url"] = meme_url
+    return data
 
 
 @app.post("/api/historian")
