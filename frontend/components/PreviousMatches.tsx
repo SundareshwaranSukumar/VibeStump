@@ -36,7 +36,7 @@ export default function PreviousMatches() {
     return (
       <div className="text-center py-20 text-[rgb(var(--color-muted))]">
         <p className="text-4xl mb-3">📋</p>
-        <p className="text-sm">No completed matches yet. Check back after matches finish.</p>
+        <p className="text-sm">Fetching recent match results…</p>
       </div>
     );
   }

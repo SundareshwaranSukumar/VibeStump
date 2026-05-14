@@ -25,7 +25,7 @@ import UpcomingMatches from '@/components/UpcomingMatches';
 // ── Tab definitions ────────────────────────────────────────────────
 
 const TABS = [
-  { id: 'live', label: 'Live', Icon: Radio, dot: true },
+  { id: 'live', label: 'Live Match', Icon: Radio, dot: true },
   { id: 'results', label: 'Results', Icon: BarChart2, dot: false },
   { id: 'schedule', label: 'Schedule', Icon: Calendar, dot: false },
   { id: 'standings', label: 'Standings', Icon: Trophy, dot: false },
@@ -174,8 +174,8 @@ export default function Home() {
                     key={id}
                     onClick={() => setActiveTab(id)}
                     className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all ${active
-                        ? 'bg-[rgba(var(--color-primary),0.14)] text-[rgb(var(--color-primary))] border border-[rgba(var(--color-primary),0.28)]'
-                        : 'text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))] hover:bg-[rgba(var(--color-surface),0.5)] border border-transparent'
+                      ? 'bg-[rgba(var(--color-primary),0.14)] text-[rgb(var(--color-primary))] border border-[rgba(var(--color-primary),0.28)]'
+                      : 'text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))] hover:bg-[rgba(var(--color-surface),0.5)] border border-transparent'
                       }`}
                   >
                     <Icon className="w-3.5 h-3.5 flex-shrink-0" />
@@ -224,7 +224,7 @@ export default function Home() {
           <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6">
             <SectionHeading
               emoji="📊"
-              title="Match Results"
+              title="Recent Match Results"
               sub="IPL 2026 — completed matches with scorecards and key performers"
             />
             <PreviousMatches />
@@ -236,8 +236,8 @@ export default function Home() {
           <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6">
             <SectionHeading
               emoji="🗓️"
-              title="Upcoming Matches"
-              sub="IPL 2026 fixture list — dates, venues and teams"
+              title="Upcoming Fixtures"
+              sub="IPL 2026 — confirmed match dates, venues and teams"
             />
             <UpcomingMatches fullPage />
           </div>
@@ -249,7 +249,7 @@ export default function Home() {
             <SectionHeading
               emoji="🏆"
               title="IPL 2026 Points Table"
-              sub="Live standings — top 4 qualify for playoffs"
+              sub="Current standings — top 4 teams qualify for playoffs"
             />
             <PointsTable fullPage />
           </div>
@@ -259,9 +259,9 @@ export default function Home() {
         {activeTab === 'teams' && (
           <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6">
             <SectionHeading
-              emoji="👥"
-              title="IPL 2026 Teams"
-              sub="All 10 franchises — tap a team to view squad and stats"
+              emoji="🏏"
+              title="IPL 2026 Franchises"
+              sub="All 10 teams — tap any team to view squad, form and upcoming fixtures"
             />
             <TeamsGrid />
           </div>

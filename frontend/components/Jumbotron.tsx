@@ -14,8 +14,9 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 
-import EmojiRain, { type JumbotronEvent } from './EmojiRain';
 import { useVibeStore } from '@/lib/store';
+import EmojiRain, { type JumbotronEvent } from './EmojiRain';
+export type { JumbotronEvent };
 
 // ── Event configuration ──────────────────────────────────────────────
 
@@ -285,7 +286,7 @@ export default function Jumbotron({ currentEvent, isTimeout, onTimeoutEnd }: Jum
               className="text-center w-full"
             >
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 mb-2">
-                Live Vibe Score
+                Live Score
               </p>
 
               {score ? (
@@ -300,7 +301,9 @@ export default function Jumbotron({ currentEvent, isTimeout, onTimeoutEnd }: Jum
                     >
                       {score.runs}/{score.wickets}
                     </p>
-                    <p className="text-[10px] text-white/40 mt-0.5">({score.overs} ov)</p>
+                    <p className="text-[10px] text-white/40 mt-0.5">
+                      {score.overs && score.overs !== '0.0' ? `(${score.overs} ov)` : 'batting'}
+                    </p>
                   </div>
 
                   <div className="flex flex-col items-center gap-1.5">

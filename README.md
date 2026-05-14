@@ -1,203 +1,124 @@
 # VibeStump — Agentic Premier League
 
-> **AI-powered IPL dashboard with live simulation, multi-agent intelligence, and offline-resilient architecture**
-
-## Overview
-
-VibeStump is a production-grade IPL live cricket dashboard that delivers real-time match data, AI-generated commentary, audience emotion tracking, team/player insights, and an interactive chatbot. The system is built with a **5-agent agentic architecture** and is designed to degrade gracefully in restricted corporate network environments (e.g., Zscaler proxy).
+> AI-powered real-time IPL 2026 dashboard — 6-agent backend, ESPN Cricinfo RSS + Cricbuzz live data, Next.js 15 frontend.
 
 ---
 
 ## Key Challenges & How We Solve Them
 
-### Challenge 1 — Corporate Proxy (Zscaler) Blocks All External APIs
+### Challenge 1 — Reliable Real-Time Cricket Data Without Premium APIs
 
-**Problem:** In many enterprise environments, Zscaler performs SSL inspection and blocks calls to:
-- ESPN Cricinfo RSS (live scores)
-- Google Gemini API (AI insights & chatbot)
-- YouTube Data API (match highlights)
-- Tenor API (memes)
-- Wikipedia (team logos)
+**Problem:** Live cricket score APIs are either paywalled, rate-limited, or blocked in restricted network environments.
 
-**Solution — Offline-First Agentic Architecture:**
+**Solution — Cricbuzz + ESPN RSS as Primary Data Sources:**
 
 ```
-External API Available?
-        │
-        ├─ YES → Use real data (Gemini, RSS, YouTube, Tenor)
-        │
-        └─ NO  → Fall back gracefully:
-                  ├─ ScoreAgent     → LiveSimulator (ball-by-ball simulation)
-                  ├─ CommentaryAgent → Offline template commentary strings
-                  ├─ InsightsAgent  → Pre-written cricket insights library
-                  ├─ MediaAgent    → Static highlight cards with YouTube links
-                  └─ MemeAgent     → Emoji reactions shown in UI instead
+ScoreAgent cycle (every 10s):
+    1. ESPN Cricinfo RSS        → parse IPL match titles + scores
+                                  Title format: "Punjab Kings 200/8 v Mumbai Indians 53 *"
+    2. Fallback: preserve DB    → display last known score until refresh
+
+DataFetchAgent (on startup + every ~5 min):
+    Cricbuzz series page scrape (series ID 9241 — IPL 2026)
+    → RSC JSON extraction → structured JSON
+    → upsert points_table, upcoming_matches, match_results
+
+    Fallback: verified hardcoded seed data (Matches 55–63)
+    → ensures dashboard always shows real, meaningful data even if scrape fails
 ```
 
-Every agent wraps external calls in `try/except` and falls back to seeded demo data. The system runs fully without internet access.
+Every agent wraps external calls in `try/except`. On full failure, the last known data is preserved and displayed until the next successful refresh.
 
 ---
 
-### Challenge 2 — No Live Match Data Without RSS Feed
+### Challenge 2 — Score Parsing for Variable RSS Title Formats
 
-**Problem:** With Cricinfo RSS blocked, there is no stream of real ball-by-ball score updates.
+**Problem:** ESPN Cricinfo RSS titles use inconsistent formats. The batting team's score appears as `"53 *"` (no wicket separator `/`) when no wickets have fallen, while completed innings appear as `"200/8"`. Naïve regex expecting `/` returned `0/0` for the batting team.
 
-**Solution — `LiveSimulator` Engine (`backend/agents.py`):**
+**Solution — Flexible Score Parser in `tools.py`:**
+
+`parse_match_title` uses a two-phase regex:
+1. Detect `"v"` or `"vs"` to split the title into two sides
+2. For each side, match `(\d+(?:\/\d+)?)\s*\*?` — the `(?:\/\d+)?` makes wickets optional
+3. The `*` suffix (batting team indicator) drives which side is `batting_team`
 
 ```python
-BALL_OUTCOMES = [0, 0, 0, 1, 1, 1, 2, 4, 4, 6, -1]  # -1 = wicket
-WEIGHTS       = [20, 18, 12, 15, 12, 8, 6, 5, 2, 1, 1]
+# "Punjab Kings 200/8 v Mumbai Indians 53 *"
+# → batting_team="Mumbai Indians", runs=53, wickets=0
+# → bowling_team="Punjab Kings", completed_score="200/8"
 ```
 
-The `LiveSimulator` class advances all LIVE matches ball-by-ball on every agent cycle (10s):
-- Realistic outcome distribution (dots most common, sixes/wickets rare)
-- Generates `WICKET / SIX / FOUR / RUNS` events → triggers commentary + AudienceMood + event glow
-- Stops at 20 overs automatically
-
-**Seeded Demo Data (`backend/seed.py`) — IPL 2026:**
-| Type              | Count    | Details                                             |
-| ----------------- | -------- | --------------------------------------------------- |
-| LIVE matches      | 2        | CSK vs MI (Match 41), RCB vs KKR (Match 40)         |
-| Both innings      | ✅        | MI first innings (171/6) + CSK chase (158/7) seeded |
-| Completed matches | 3        | SRH vs GT, MI vs DC, RR vs PBKS                     |
-| Points Table      | 10 teams | Realistic NRR and form                              |
-| Upcoming fixtures | 5        | May 15–18 schedule                                  |
-| Commentary events | ~40+     | Seeded with WICKET, SIX, FOUR events                |
+Overs default to `""` (not `"0.0"`) since RSS titles never include overs. The frontend renders `"—"` in that case.
 
 ---
 
-### Challenge 3 — Gemini API Unreachable (SSL Inspection)
+### Challenge 3 — YouTube Embeds Blocked or Unavailable
 
-**Problem:** Zscaler intercepts HTTPS to `generativelanguage.googleapis.com`.
+**Problem:** `react-player` YouTube embeds can fail silently in restricted environments.
 
 **Solution:**
-- All Gemini calls wrapped in `try/except` with clear fallbacks
-- `InsightsAgent` → 8 pre-written cricket analytical insights
-- `chat_with_stumpmind()` → returns offline mode message  
-- `get_team_details_ai()` → static fallback text
-- Team detail pages still show full **Playing XI + substitutes** from `tools.py`
-
----
-
-### Challenge 4 — Empty Dashboard on First Load
-
-**Problem:** Without live data the dashboard appeared blank, degrading the demo experience.
-
-**Solution — Auto-Seed on Startup:**
-`seed.py`'s `run_seed()` is called in the FastAPI lifespan before agents start. It populates the database with complete IPL 2026 data so the UI shows meaningful content immediately on first open — no manual data entry needed.
-
----
-
-### Challenge 5 — YouTube Embeds Blocked
-
-**Problem:** `react-player` YouTube embeds fail silently behind Zscaler proxy.
-
-**Solution:**
-- Highlights section replaced with card-based UI (no `<iframe>`)
+- Highlights section uses card-based UI (no `<iframe>`)
 - Each highlight card shows a team-colored gradient + cricket icon + match title
-- "Watch on YouTube" external link button opens in a new tab
+- "Watch on YouTube" external link opens in a new tab
+- `MediaAgent` extracts real YouTube video IDs from search results via regex
 - `onError` handler hides broken thumbnail images gracefully
 
 ---
 
-### Challenge 6 — Single-Innings Score Graph
+### Challenge 4 — Single-Innings Score Graph
 
 **Problem:** Runs vs Overs chart only tracked the current batting innings.
 
 **Solution:**
 - Added `batting_team` column to `score_progression` table
-- Both innings are seeded separately (MI and CSK) under the same `match_id`
+- Both innings are stored separately under the same `match_id`
 - `RunsGraph` groups data points by `batting_team` and renders two colored lines with legend
 - Each team's line uses their brand color from `TEAM_THEMES`
 
 ---
 
-### Challenge 7 — Audience Emotion & Meme Board
+### Challenge 5 — Stadium Jumbotron & Live Events
 
 **Problem:** The dashboard lacked any sense of the crowd's emotional state. Batting events (WICKET, SIX, FOUR) happened silently with no visible crowd reaction.
 
-**Solution — `AudienceMood` Component (`frontend/components/AudienceMood.tsx`):**
+**Solution — `Jumbotron` Component (`frontend/components/Jumbotron.tsx`):**
 
-The component reads `activeEvent` from the Zustand store, which is set whenever the Commentary feed receives a WICKET/SIX/FOUR event. It displays:
+An LED dot-matrix stadium display that reacts to live match events. It reads `activeEvent` from Zustand and shows dramatic overlays:
 
-| Event   | Color    | Crowd Energy Bar | Mood Label                       |
-| ------- | -------- | ---------------- | -------------------------------- |
-| WICKET  | 🔴 Red    | 92%              | 💀 Wicket! Drama in the Stadium!  |
-| SIX     | 🟣 Purple | 100%             | 🚀 SIX! The Crowd Goes Ballistic! |
-| FOUR    | 🟢 Green  | 78%              | 🏏 FOUR! Beautiful Cricket Shot!  |
-| Default | 🔵 Indigo | 42%              | 🏟️ Stadium Atmosphere             |
+| Event  | Display               | Effect                    |
+| ------ | --------------------- | ------------------------- |
+| WICKET | 💀 LED text + red glow | EmojiRain + crowd roar    |
+| SIX    | 🚀 LED text + purple   | EmojiRain + stadium shake |
+| FOUR   | 🏏 LED text + green    | EmojiRain + applause      |
+| NOBALL | ⚠️ LED text + yellow   | Alert animation           |
+| DOT    | 🔵 LED text + blue     | Subtle pulse              |
 
 **Features:**
-- **Crowd energy bar** — animated `motion.div` transitions smoothly to the event level
-- **Floating emoji particles** — 8 emojis float up across the panel with staggered delays using Framer Motion
-- **Meme image** — polls `GET /api/meme?event_type=WICKET` which tries Tenor API v2
-- **Offline fallback** — if Tenor is blocked, a 3-emoji bouncing row is shown instead
-- **Placement** — right column, between AgentCommentary and PointsTable (visible on every match)
+- **LED dot-matrix display** — stadium-style scrolling text with retro pixel font
+- **EmojiRain child component** — cascading emojis on major events
+- **Strategic Timeout mode** — countdown timer with animated break display
+- **5s auto-reset** — events clear after 5 seconds, returning to Live Score
+- **Live Score** — reads `score` from Zustand for ambient match energy display
 
 **Event cascade flow:**
 ```
-ScoreAgent detects run/wicket delta
+ScoreAgent detects real score delta
   → CommentaryAgent writes event_type to DB
   → MemeAgent fetches Tenor GIF (or null) and stores it
   → Frontend polls /api/commentary every 5s
   → activeEvent set in Zustand store
-  → AudienceMood reacts: color change + energy bar + particles + meme
+  → Jumbotron reacts: LED overlay + EmojiRain + auto-reset
   → SoundManager plays wicket/six/boundary audio cue
   → Scoreboard glows in team color
 ```
 
 ---
 
-### Challenge 8 — `deploy.sh local` Fails in Zscaler-Protected Environments
+### Challenge 6 — Team/Player Pages Re-Fetching on Every Navigation
 
-**Problem:** `pip install` and `npm install` fail behind Zscaler SSL inspection because the proxy intercepts and re-signs certificates, causing SSL verification errors.
+**Problem:** Every navigation to a team or player page triggered a backend API call — even for the same team — causing unnecessary latency.
 
-**Solution — Zscaler-Safe Install Flags in `deploy.sh`:**
-
-**Backend (pip):**
-```bash
-pip install -r requirements.txt --quiet --prefer-binary \
-    --trusted-host pypi.org \
-    --trusted-host pypi.python.org \
-    --trusted-host files.pythonhosted.org 2>/dev/null \
-  || pip install -r requirements.txt --quiet 2>/dev/null \
-  || echo "[WARN] pip install failed — using cached packages"
-```
-The `--trusted-host` flags bypass SSL verification for PyPI domains specifically. If that also fails, cached packages are used.
-
-**Frontend (npm):**
-```bash
-npm install --silent --prefer-offline 2>/dev/null \
-  || npm install --silent 2>/dev/null \
-  || echo "[WARN] npm install failed — using existing node_modules"
-```
-`--prefer-offline` uses the local npm cache first; only fetches from registry if package is missing.
-
-**Frontend standalone server (NOT `next start`):**
-```bash
-# After build, start with:
-node .next/standalone/server.js
-```
-`next.config.mjs` sets `output: 'standalone'`, which produces a self-contained server bundle. `next start` will not work with this mode.
-
-**Backend env var injection:**
-```bash
-nohup env GEMINI_API_KEY="$GEMINI_API_KEY" \
-    YOUTUBE_API_KEY="$YOUTUBE_API_KEY" \
-    TENOR_API_KEY="$TENOR_API_KEY" \
-    uvicorn main:app --host 0.0.0.0 --port 8000 > /tmp/vibestump-backend.log 2>&1 &
-```
-Env vars are passed explicitly through `env` to avoid issues with `nohup` dropping the shell environment.
-
----
-
-### Challenge 9 — Team/Player Pages Re-Fetching on Every Navigation
-
-**Problem:** Every time a user navigated to a team or player page, the backend API was called again — even for the same team — causing unnecessary latency and redundant Gemini calls.
-
-**Solution — Dual-Agent Data Orchestration (`v4.0`):**
-
-A new frontend data layer classifies all requests and routes them to specialized agents:
+**Solution — Dual-Agent Data Orchestration:**
 
 ```
 Component calls useAgentData({ query: 'CSK Roster', type: 'auto' })
@@ -220,11 +141,11 @@ Component calls useAgentData({ query: 'CSK Roster', type: 'auto' })
 
 | Data Type | Examples                                              | Agent         | TTL        |
 | --------- | ----------------------------------------------------- | ------------- | ---------- |
-| STATIC    | Team roster, player bio, career stats, coach, stadium | Librarian     | > 1 hour   |
+| STATIC    | Team roster, player bio, career stats, coach, stadium | Librarian     | 5 minutes  |
 | DYNAMIC   | Live score, commentary, run rate, events, memes       | Live Reporter | < 1 minute |
 
-**Files added:**
-- `frontend/lib/CacheManager.ts` — localStorage cache with 1-hour TTL
+**Files:**
+- `frontend/lib/CacheManager.ts` — localStorage cache with 5-minute TTL
 - `frontend/lib/AgentDataRouter.ts` — keyword-based request classifier
 - `frontend/hooks/useLibrarianAgent.ts` — cache-first static data hook
 - `frontend/hooks/useLiveReporterAgent.ts` — zero-cache live polling hook
@@ -250,8 +171,8 @@ Component calls useAgentData({ query: 'CSK Roster', type: 'auto' })
 │  Scoreboard ──────────────── TeamsGrid (box-in-box layout)  │
 │                                                             │
 │  ┌── LEFT (2/3) ─────────┐  ┌── RIGHT (1/3) ─────────────┐ │
-│  │ LiveVideoPlayer       │  │ AgentCommentary (AI insights)│ │
-│  │ RunsGraph (2 innings) │  │ AudienceMood / Memes        │ │
+│  │ LiveVideoPlayer       │  │ Match Insights (AI)         │ │
+│  │ Runs Progression chart│  │ Jumbotron (LED events)      │ │
 │  │ Commentary Feed       │  │ Points Table                │ │
 │  │ Highlights (no embed) │  │ Upcoming Matches            │ │
 │  └───────────────────────┘  └─────────────────────────────┘ │
@@ -263,33 +184,39 @@ Component calls useAgentData({ query: 'CSK Roster', type: 'auto' })
 ┌─────────────────────────────────────────────────────────────┐
 │  BACKEND (FastAPI — Port 8000)                              │
 │                                                             │
-│  5 Background Agents (asyncio, 10s cycle)                   │
-│  ├─ ScoreAgent    → Cricinfo RSS ──OR── LiveSimulator       │
-│  ├─ CommentaryAgent → Score delta → template events         │
-│  ├─ InsightsAgent → Gemini 2.5 Flash ──OR── offline library │
-│  ├─ MediaAgent   → YouTube API ──OR── static cards          │
-│  └─ MemeAgent    → Tenor API ──OR── emoji reactions (UI)    │
+│  6 Background Agents (asyncio, 10s cycle)                   │
+│  ├─ ScoreAgent     → ESPN Cricinfo RSS (live scores)        │
+│  ├─ CommentaryAgent → Real score delta → template events    │
+│  ├─ InsightsAgent  → Gemini 2.5 Flash                       │
+│  ├─ MediaAgent     → YouTube API → search fallback          │
+│  ├─ MemeAgent      → Tenor API                              │
+│  └─ DataFetchAgent → Cricbuzz series 9241 (RSC JSON)        │
+│                      Hardcoded seed fallback                │
+│                      Runs immediately on startup            │
 │                                                             │
 │  REST Endpoints: /api/matches, /api/live-score,             │
 │  /api/score-progression, /api/commentary, /api/insights,    │
 │  /api/highlights, /api/meme, /api/points-table,             │
 │  /api/upcoming-matches, /api/teams, /api/teams/{code},      │
-│  /api/players/{name}, POST /api/chat                        │
+│  /api/players/{name}, POST /api/chat, /api/completed-matches│
+│  /api/match-result/{id}, /api/search, /api/live-search      │
 └──────────────────┬──────────────────────────────────────────┘
                    │ read / write
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  SQLite (WAL mode) — vibestump.db                           │
 │  matches | live_scores | score_progression (batting_team)   │
-│  commentary | highlights | insights | memes                 │
+│  commentary | highlights | insights | memes | match_results │
 │  points_table | upcoming_matches                            │
 └──────────────────┬──────────────────────────────────────────┘
-                   │ polled best-effort (graceful fallback)
+                   │ polled on every agent cycle
                    ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  EXTERNAL APIs (all optional — system works without them)   │
-│  ESPN Cricinfo RSS | Google Gemini 2.5 Flash                │
-│  YouTube Data API v3 | Tenor API v2 | Google Search         │
+│  EXTERNAL SOURCES                                           │
+│  ESPN Cricinfo RSS (live scores, PRIMARY)                   │
+│  Cricbuzz.com — series/9241 (points table, results)         │
+│  Google Gemini 2.5 Flash (AI insights, chat)                │
+│  YouTube Data API v3 | Tenor API v2                         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -297,35 +224,38 @@ Component calls useAgentData({ query: 'CSK Roster', type: 'auto' })
 
 ## Tech Stack
 
-| Layer             | Technology                                 |
-| ----------------- | ------------------------------------------ |
-| Backend framework | FastAPI ≥ 0.115, Python 3.12               |
-| Database          | SQLite WAL mode                            |
-| AI engine         | Google Gemini 2.5 Flash (`google-genai`)   |
-| Live data         | ESPN Cricinfo RSS + LiveSimulator fallback |
-| Frontend          | Next.js 15, React 19, TypeScript 5.6+      |
-| Styling           | Tailwind CSS v4 (glassmorphism)            |
-| State management  | Zustand 5                                  |
-| Animation         | Framer Motion 12                           |
-| Charts            | Recharts 2.12                              |
+| Layer             | Technology                                            |
+| ----------------- | ----------------------------------------------------- |
+| Backend framework | FastAPI ≥ 0.115, Python 3.11                          |
+| Database          | SQLite WAL mode                                       |
+| AI engine         | Google Gemini 2.5 Flash (`google-genai`)              |
+| Live data         | ESPN Cricinfo RSS + Cricbuzz (series 9241)            |
+| Frontend          | Next.js 15, React 19, TypeScript 5.6+                 |
+| Styling           | Tailwind CSS v4 (glassmorphism, light-first theme)    |
+| State management  | Zustand 5                                             |
+| Animation         | Framer Motion 12                                      |
+| Charts            | Recharts 2.12                                         |
+| Deployment        | GCP Cloud Run (backend + frontend, separate services) |
 
 ---
 
 ## Feature Matrix
 
-| Feature             | Online             | Offline (Zscaler)      |
-| ------------------- | ------------------ | ---------------------- |
-| Live scoreboard     | ✅ Real RSS data    | ✅ LiveSimulator        |
-| Ball-by-ball events | ✅ Real events      | ✅ Simulated events     |
-| Commentary feed     | ✅ Gemini-written   | ✅ Template strings     |
-| AI insights         | ✅ Gemini analysis  | ✅ Pre-written facts    |
-| StumpMind chat      | ✅ Gemini + Search  | ✅ Offline message      |
-| Highlights          | ✅ YouTube API      | ✅ Card + external link |
-| Memes               | ✅ Tenor GIFs       | ✅ Emoji reactions      |
-| AudienceMood        | ✅ Tenor meme image | ✅ Emoji + crowd bar    |
-| Points table        | ✅ Real standings   | ✅ Seeded IPL 2026      |
-| Team Playing XI     | ✅ Seeded squads    | ✅ Seeded squads        |
-| Runs vs Overs chart | ✅ Both innings     | ✅ Both innings         |
+| Feature                | Status                                             |
+| ---------------------- | -------------------------------------------------- |
+| Live scoreboard        | ✅ ESPN Cricinfo RSS, updated every 10s             |
+| Ball-by-ball events    | ✅ Real score delta triggers WICKET/SIX/FOUR events |
+| Commentary feed        | ✅ Template-driven from real score changes          |
+| AI insights            | ✅ Gemini 2.5 Flash on live match events            |
+| StumpMind chat         | ✅ DB-grounded + Gemini response                    |
+| Highlights             | ✅ Real YouTube IDs; card UI, no embed              |
+| Memes                  | ✅ Tenor GIFs on events                             |
+| Jumbotron              | ✅ LED event display + EmojiRain + auto-reset       |
+| Points table           | ✅ Cricbuzz series 9241; refreshed every ~5 min     |
+| Upcoming schedule      | ✅ Cricbuzz series 9241; refreshed every ~5 min     |
+| Recent results         | ✅ Cricbuzz series 9241; refreshed every ~5 min     |
+| Team Playing XI        | ✅ Real IPL 2026 squads from tools.py               |
+| Runs progression chart | ✅ Both innings tracked                             |
 
 ---
 
@@ -333,7 +263,7 @@ Component calls useAgentData({ query: 'CSK Roster', type: 'auto' })
 
 ### One-Command Setup
 ```bash
-# First-time: installs deps, builds frontend, seeds DB
+# First-time: installs deps, builds frontend, initialises DB schema
 bash deploy.sh local
 
 # Start both services
@@ -343,21 +273,74 @@ bash deploy.sh start
 
 > **Note:** The frontend uses Next.js standalone output. After `deploy.sh local`,
 > the start command runs `node .next/standalone/server.js` — NOT `next start`.
+>
+> On first load the DataFetchAgent runs immediately and populates the points table,
+> upcoming fixtures, and recent results from Cricbuzz. The scoreboard updates every
+> 10 seconds from the ESPN Cricinfo RSS feed.
 
 ### Environment Variables (`.env` in project root)
 ```bash
-GEMINI_API_KEY=your_key   # Optional — system works without it
-YOUTUBE_API_KEY=your_key  # Optional — static highlights shown without it
-TENOR_API_KEY=your_key    # Optional — emoji reactions shown without it
+GEMINI_API_KEY=your_key   # Optional — AI insights and chat disabled without it
+YOUTUBE_API_KEY=your_key  # Optional — search fallback used without it
+TENOR_API_KEY=your_key    # Optional — meme section empty without it
+```
+
+### Docker Compose (local)
+```bash
+cp .env.example .env   # fill in API keys
+docker compose up --build
+# Frontend: http://localhost:3000
+# Backend:  http://localhost:8000
 ```
 
 ### Cloud Deploy (GCP Cloud Run)
+
+**Prerequisites (one-time)**
 ```bash
-bash deploy.sh setup      # First-time GCP setup
-bash deploy.sh backend    # Deploy backend only
-bash deploy.sh frontend   # Deploy frontend only
-bash deploy.sh status     # Show live URLs
+# Install & authenticate Google Cloud SDK
+gcloud auth login
+gcloud config set project YOUR_PROJECT_ID   # e.g. my-gcp-project-123
+
+# Enable required APIs (one-time, ~30 seconds)
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com
 ```
+
+**First-time deploy — both services**
+```bash
+# Builds images via Cloud Build, deploys backend + frontend to Cloud Run
+# Prompts for GEMINI_API_KEY if not in .env
+bash deploy.sh setup
+# → Prints live App URL and API URL when done
+```
+
+> On first start the DataFetchAgent runs immediately and populates the points table,
+> upcoming fixtures, and recent results from Cricbuzz. The scoreboard updates every
+> 10 seconds from the ESPN Cricinfo RSS feed.
+
+**Redeploy after code changes**
+```bash
+bash deploy.sh backend    # backend only  (~2 min)
+bash deploy.sh frontend   # frontend only (~2 min)
+bash deploy.sh setup      # both services (~4 min)
+```
+
+**Update API keys without rebuilding (instant)**
+```bash
+bash deploy.sh env
+```
+
+**Check live URLs**
+```bash
+bash deploy.sh status
+# → Backend:  https://vibestump-api-xxxx-uc.a.run.app
+# → Frontend: https://vibestump-ui-xxxx-uc.a.run.app
+# → API Docs: https://vibestump-api-xxxx-uc.a.run.app/docs
+```
+
+**GCP requirements:**
+- Billing enabled on the project
+- `gcloud` authenticated with an account that has Cloud Run Admin + Cloud Build Editor roles
+- Override region (default `asia-south1`): `export GCP_REGION=us-central1`
 
 ---
 
@@ -366,50 +349,51 @@ bash deploy.sh status     # Show live URLs
 ```
 VibeStump-main/
 ├── backend/
-│   ├── main.py           # FastAPI app + agent lifecycle
-│   ├── database.py       # SQLite CRUD helpers
-│   ├── agents.py         # 5 agents + LiveSimulator class
-│   ├── tools.py          # Team metadata + SQUAD_DATA (Playing XI)
-│   └── seed.py           # Startup data seeder (IPL 2026)
+│   ├── main.py           # FastAPI app + agent lifecycle (lifespan)
+│   ├── database.py       # SQLite CRUD helpers; init_db() at import
+│   ├── agents.py         # 6 agents; DataFetchAgent uses Cricbuzz on startup
+│   ├── tools.py          # IPL_TEAMS + SQUAD_DATA + ESPN RSS + Cricbuzz scraper
+│   └── seed.py           # Verified IPL 2026 seed data (Points table, Matches 55–63)
 │
 ├── frontend/
 │   ├── app/
-│   │   ├── layout.tsx        # Root layout — mounts global StumpMind chat
-│   │   ├── page.tsx          # Main dashboard
-│   │   ├── team/[teamId]/    # Team detail: Playing XI + Bench (useLibrarianAgent)
-│   │   ├── player/[playerId]/# Player stats (useLibrarianAgent)
-│   │   └── api/[...path]/    # Next.js → FastAPI proxy
+│   │   ├── layout.tsx          # Root layout — mounts global StumpMind chat
+│   │   ├── page.tsx            # Main dashboard (5 tabs)
+│   │   ├── team/[teamId]/      # Team detail: Playing XI + Bench (useLibrarianAgent)
+│   │   ├── player/[playerId]/  # Player stats (useLibrarianAgent)
+│   │   └── api/[...path]/      # Next.js → FastAPI proxy (GET + POST)
 │   │
 │   ├── components/
-│   │   ├── AudienceMood.tsx      # Crowd emotion + meme + emoji reactions
-│   │   ├── ClientProviders.tsx   # Global wrapper — mounts StumpMindChat on all pages
-│   │   ├── MatchSelector.tsx     # Today/Previous match dropdowns
-│   │   ├── TeamsGrid.tsx         # Box-in-box 10-team panel
-│   │   ├── RunsGraph.tsx         # Dual-innings Recharts line chart
-│   │   ├── PointsTable.tsx       # IPL 2026 standings
-│   │   ├── UpcomingMatches.tsx   # Fixtures schedule
-│   │   ├── Highlights.tsx        # Card-based highlight UI (no iframe)
-│   │   ├── Scoreboard.tsx        # Live score + event glow animation
-│   │   ├── Commentary.tsx        # Ball-by-ball event feed
-│   │   ├── AgentCommentary.tsx   # AI insights panel
-│   │   └── StumpMindChat.tsx     # Floating chatbot (mounted via ClientProviders)
+│   │   ├── Jumbotron.tsx           # LED dot-matrix stadium display + EmojiRain
+│   │   ├── EmojiRain.tsx           # Cascading emojis; exports JumbotronEvent type
+│   │   ├── ClientProviders.tsx     # Global wrapper — mounts StumpMindChat
+│   │   ├── MatchSelector.tsx       # Today/Previous match dropdowns
+│   │   ├── TeamsGrid.tsx           # Box-in-box 10-team panel
+│   │   ├── RunsGraph.tsx           # Dual-innings Recharts line chart
+│   │   ├── PointsTable.tsx         # IPL standings (Cricbuzz)
+│   │   ├── UpcomingMatches.tsx     # Fixtures schedule (Cricbuzz)
+│   │   ├── Highlights.tsx          # Card-based highlight UI (no iframe)
+│   │   ├── Scoreboard.tsx          # Live score + event glow animation
+│   │   ├── Commentary.tsx          # Ball-by-ball event feed
+│   │   ├── AgentCommentary.tsx     # Match insights panel
+│   │   └── StumpMindChat.tsx       # Floating chatbot
 │   │
-│   ├── hooks/                    # Dual-Agent Data Orchestration
-│   │   ├── useLibrarianAgent.ts  # The Librarian: cache-first static data (1h TTL)
+│   ├── hooks/
+│   │   ├── useLibrarianAgent.ts    # The Librarian: cache-first static data (1h TTL)
 │   │   ├── useLiveReporterAgent.ts # The Live Reporter: zero-cache 5s polling
-│   │   └── useAgentData.ts       # Universal hook — auto-routes to correct agent
+│   │   └── useAgentData.ts         # Universal hook — routes to correct agent
 │   │
 │   └── lib/
 │       ├── store.ts              # Zustand store + TEAM_THEMES + activeEvent
-│       ├── api.ts                # Typed fetch helpers
+│       ├── api.ts                # Typed fetch helpers for all endpoints
 │       ├── AgentDataRouter.ts    # Classifies requests: STATIC vs DYNAMIC
-│       ├── CacheManager.ts       # localStorage cache, 1-hour TTL
-│       └── SoundManager.ts       # Audio cues
+│       ├── CacheManager.ts       # localStorage cache, 5-minute TTL
+│       └── SoundManager.ts       # Audio cues (WICKET, SIX, FOUR)
 │
-├── architecture.puml     # PlantUML system diagram (v4.0)
+├── architecture.puml     # PlantUML system diagram
 ├── docker-compose.yml    # Local Docker orchestration
-├── deploy.sh             # Local + GCloud deploy script
-├── requirements.md       # Product requirements (updated)
+├── deploy.sh             # Local + GCP Cloud Run deploy script
+├── requirements.md       # Product requirements
 └── README.md             # This file
 ```
 
@@ -417,9 +401,10 @@ VibeStump-main/
 
 ## Design Principles
 
-1. **Offline-first** — Every external API call has a fallback; never shows a blank dashboard
-2. **Agentic data flow** — External APIs → Agents → SQLite → FastAPI → Frontend (clean separation)
+1. **Real-time data** — ESPN Cricinfo RSS drives live scores every 10 seconds. Cricbuzz powers points table, fixtures, and results.
+2. **Agentic data flow** — External sources → Agents → SQLite → FastAPI → Frontend (clean separation)
 3. **Dual-agent data routing** — STATIC data served from cache (Librarian); DYNAMIC data polled live (Reporter)
-4. **Progressive enhancement** — Base experience works without any API key
+4. **Progressive enhancement** — Dashboard degrades gracefully with hardcoded seed data when live fetches fail
 5. **Event-driven UI** — WICKET/SIX/FOUR cascade: glow animation → sound → crowd mood → meme
 6. **No broken UI** — All external images use `onError` fallbacks; no silent failures
+7. **GCP-native deployment** — Both services are containerised and deployed to Cloud Run with a single shell command

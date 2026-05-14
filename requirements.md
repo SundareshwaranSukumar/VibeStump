@@ -1,249 +1,319 @@
 # VibeStump: Agentic Premier League — Requirements Document
 
-This document outlines the core functional, technical, and design requirements for the VibeStump platform.
+*Author: Sundareshwaran Sukumar · IPL 2026 · Version 2.0*
 
 ---
 
 ## 1. Core Objective
 
-Build a production-grade, AI-powered IPL cricket dashboard that delivers real-time match data, AI-generated commentary, team insights, and an interactive chatbot—all powered by Google Gemini 2.5 Flash and polled from internet APIs.
+Build a production-grade, AI-powered IPL 2026 cricket dashboard that delivers real-time match data, ball-by-ball commentary, stadium event effects, team/player insights, and an interactive chatbot. The system uses a **6-agent agentic backend** with ESPN Cricinfo RSS and Cricbuzz as the primary real-time data sources. Deployed on Google Cloud Run.
 
 ---
 
 ## 2. Functional Requirements
 
-### 2.1 Match Data & Live Updates
-✅ **Internet Feed Integration**: Fetch live match scores from ESPN Cricinfo RSS feed dynamically  
-✅ **No Dummy Data**: Zero hardcoded match data; 100% real-time APIs  
-✅ **Live Scoreboard**: Display runs, wickets, overs, CRR, target tracking  
-✅ **Match Selector**: Dropdown to switch between LIVE, upcoming, and completed matches  
-✅ **Match History**: View scores and highlights for past matches  
-✅ **IPL Points Table**: Real-time team standings  
-✅ **Score Progression**: Runs vs overs chart for trend analysis  
+### 2.1 Match Data & Live Scores
 
-### 2.2 Team & Player Information
-✅ **Team Pages** (`/team/[teamId]`): Squad list, coach, home ground, form  
-✅ **Player Pages** (`/player/[playerId]`): Career stats, current season summary  
-✅ **Team Logos & Colors**: All 10 IPL teams with brand colors and glow animations  
-✅ **AI-Generated Insights**: Gemini-powered team analysis and player stats  
+| ID | Requirement | Status |
+|----|-------------|--------|
+| F-01 | Fetch live IPL match scores from the ESPN Cricinfo RSS feed every 10 seconds | ✅ |
+| F-02 | Parse RSS titles in variable formats: `"Punjab Kings 200/8 v Mumbai Indians 53 *"` — handles both `N/W` (wickets fallen) and bare `N` (no wickets) formats | ✅ |
+| F-03 | Display live scoreboard: batting team, bowling team, runs, wickets, overs, run rate, target, required rate | ✅ |
+| F-04 | Match Selector: switch between current live match and completed matches | ✅ |
+| F-05 | Show `"—"` for overs when not available in RSS title (not `"0.0"`) | ✅ |
+| F-06 | Poll scores every 5 seconds on the frontend | ✅ |
 
-### 2.3 AI-Powered Features
-✅ **7 Dedicated Agents** (5 backend + 2 frontend):
-  1. **ScoreAgent** — Polls cricinfo RSS every 10s
-  2. **CommentaryAgent** — Detects score deltas, generates events
-  3. **InsightsAgent** — Gemini analysis and predictions
-  4. **MediaAgent** — YouTube highlights fetching
-  5. **MemeAgent** — Tenor meme images for fun moments
-  6. **The Librarian Agent** (`useLibrarianAgent`) — Frontend static data with 1-hour localStorage cache
-  7. **The Live Reporter Agent** (`useLiveReporterAgent`) — Frontend live polling at 5s intervals, zero cache
+### 2.2 Points Table, Schedule & Results
 
-✅ **StumpMind Chatbot** — Ask questions about matches, players, teams with Google Search  
-✅ **Real-Time Commentary** — Event-based (WICKET, SIX, FOUR, etc.) with color-coded UI  
-✅ **AI Insights Display** — Match analysis and trends from Gemini  
+| ID | Requirement | Status |
+|----|-------------|--------|
+| F-07 | Fetch IPL 2026 points table from Cricbuzz series page (series ID 9241) via RSC JSON scraping | ✅ |
+| F-08 | Display standings: team, played, won, lost, NRR, points, with rank | ✅ |
+| F-09 | Fetch upcoming fixtures from Cricbuzz — date, time, venue, teams | ✅ |
+| F-10 | Display completed match results: winner, margin, scores, Player of the Match | ✅ |
+| F-11 | Fallback to verified hardcoded seed data (Matches 55–63, real IPL 2026) when Cricbuzz is unreachable | ✅ |
+| F-12 | DataFetchAgent runs immediately on startup and refreshes every ~5 minutes | ✅ |
 
-### 2.4 Visuals & Multimedia
-✅ **Branded Header**: VibeStump [Stumps Logo] : Agentic Premier League [IPL Logo]  
-✅ **Run Progression Chart**: Professional Recharts visualization (Runs vs Overs)  
-✅ **YouTube Highlights**: Embedded react-player showing real match videos  
-✅ **Event Glow Animations**: Team-colored pulsing effects on WICKET/SIX/FOUR  
-✅ **Sound Effects**: Wicket, boundary, six audio cues (0.4 volume)  
-✅ **Commentary Feed**: Color-coded event display (red=WICKET, purple=SIX, green=FOUR)  
+### 2.3 Team & Player Pages
 
-### 2.5 Design & UI/UX
-✅ **Glassmorphism Design**: Modern frosted glass effect on cards  
-✅ **Dual Themes**: Dark (default) and light mode with smooth toggle  
-✅ **Framer Motion Animations**: Smooth transitions and event glows  
-✅ **Responsive Layout**:
-  - Desktop: 2-column grid (left: scoreboard + graph, right: insights)
-  - Mobile: Single column with collapsible sections
-✅ **Zero Dummy Data**: All placeholder content removed  
-✅ **No Rickrolls**: Only real YouTube videos and Tenor images  
+| ID | Requirement | Status |
+|----|-------------|--------|
+| F-13 | Team detail page (`/team/[teamId]`): full IPL 2026 Playing XI with role badges (BAT, WK, ALL, BOWL), captain and wicketkeeper markers, bench section | ✅ |
+| F-14 | Team form: pulled from SQLite DB — wins/losses, NRR rank, points | ✅ |
+| F-15 | Team recent results: queried from `match_results` table in DB | ✅ |
+| F-16 | Team upcoming fixtures: queried from `upcoming_matches` table in DB | ✅ |
+| F-17 | Player detail page (`/player/[playerId]`): career stats and current season summary via Gemini | ✅ |
+| F-18 | All 10 team squads use real IPL 2026 rosters (e.g. Rajat Patidar as RCB captain) | ✅ |
 
----
+### 2.4 AI & Commentary Features
 
-## 3. Backend Architecture
+| ID | Requirement | Status |
+|----|-------------|--------|
+| F-19 | Ball-by-ball commentary feed with event detection: WICKET, SIX, FOUR, RUNS | ✅ |
+| F-20 | Commentary events are triggered by real score deltas (not simulated) | ✅ |
+| F-21 | Match Insights (AI): generated by Gemini 2.5 Flash on live match events | ✅ |
+| F-22 | StumpMind chatbot: floating, global, available on all pages; powered by Gemini with DB context | ✅ |
+| F-23 | YouTube highlights: real video IDs fetched via YouTube API; card UI (no iframe embeds) | ✅ |
+| F-24 | Meme reactions: Tenor GIFs fetched on WICKET, SIX, FOUR events | ✅ |
 
-### 3.1 Database (SQLite)
-- **Tables**: matches, live_scores, score_progression, commentary, highlights, insights, memes, points_table
-- **Mode**: WAL (Write-Ahead Logging) for concurrent access
-- **Auto-Init**: Created automatically on first run
+### 2.5 Stadium Event Display (Jumbotron)
 
-### 3.2 API Endpoints (13 total)
-- **Match Data**: `/api/matches`, `/api/live-score`, `/api/score-progression`, `/api/commentary`, `/api/points-table`
-- **Media**: `/api/highlights`, `/api/meme`
-- **Insights**: `/api/insights`
-- **Teams**: `/api/teams`, `/api/teams/{team_code}`
-- **Players**: `/api/players/{player_name}`
-- **Chat**: `POST /api/chat`
+| ID | Requirement | Status |
+|----|-------------|--------|
+| F-25 | LED dot-matrix Jumbotron component reacts to live events: WICKET (red), SIX (purple), FOUR (green), NOBALL (yellow), DOT (blue) | ✅ |
+| F-26 | EmojiRain child component: cascading emojis on major events | ✅ |
+| F-27 | 5-second auto-reset: Jumbotron returns to Live Score display after each event | ✅ |
+| F-28 | Strategic Timeout mode with animated countdown | ✅ |
+| F-29 | Audio cues: WICKET, SIX, FOUR play distinct sounds (initialized on first user interaction) | ✅ |
+| F-30 | Scoreboard team-colored glow animation on events | ✅ |
 
-### 3.3 Background Agents (Every 10s)
-- **ScoreAgent**: Polls cricinfo RSS → updates DB
-- **CommentaryAgent**: Detects score deltas → generates events
-- **InsightsAgent**: Calls Gemini → AI analysis
-- **MediaAgent**: Searches YouTube → highlights
-- **MemeAgent**: Fetches Tenor → fun images
+### 2.6 Runs Progression Chart
+
+| ID | Requirement | Status |
+|----|-------------|--------|
+| F-31 | Recharts line chart shows runs progression for both innings separately | ✅ |
+| F-32 | Each innings identified by `batting_team` column in `score_progression` table | ✅ |
+| F-33 | Each team's line uses its brand color from `TEAM_THEMES` | ✅ |
 
 ---
 
-## 4. Frontend Architecture
+## 3. Non-Functional Requirements
 
-### 4.1 Layout
+### 3.1 Data Quality
+- All displayed data is sourced from live public cricket feeds — no fabricated or simulated data
+- Seed data (Matches 55–63) uses verified real IPL 2026 fixtures and results
+- Stale or fabricated data is cleared from DB on startup before seeding
+
+### 3.2 Resilience
+- Every agent call is wrapped in `try/except`; last known DB data is preserved on fetch failure
+- Cricbuzz scraper falls back to hardcoded real data if scrape returns 404 or empty
+- Frontend shows meaningful empty states instead of broken UI when data is not yet available
+
+### 3.3 Theme
+- **Light theme is the default** — `data-theme="light"` in HTML, CSS variables configured accordingly
+- Dark mode toggle available via Header component
+
+### 3.4 Performance
+- Frontend score poll: every 5 seconds
+- Backend agent cycle: every 10 seconds
+- DataFetchAgent refresh interval: every 30 agent cycles (~5 minutes)
+- Team/player pages: 1-hour localStorage cache (no redundant API calls on navigation)
+- Backend SQLite: WAL mode for concurrent read/write
+
+### 3.5 Security
+- CORS: `http://localhost:3000` and `https://*.run.app` only
+- All environment secrets in `.env` (never in source code)
+- No direct frontend → external API calls; all external calls go through the backend
+
+---
+
+## 4. System Architecture
+
+### 4.1 Data Flow
 ```
-Header (Sticky)
-  ├─ Logo: Stumps + IPL
-  ├─ Match Selector (Dropdown)
-  └─ Theme Toggle
-  
-Content Grid (2-column desktop, 1-column mobile)
-  ├─ Left Panel
-  │  ├─ Live Scoreboard
-  │  └─ Runs vs Overs Chart
-  ├─ Center Panel
-  │  ├─ Commentary Feed
-  │  └─ AI Insights
-  └─ Right Panel
-     ├─ YouTube Highlights
-     └─ [Responsive]
-     
-StumpMind Chat (Floating Button)
+ESPN Cricinfo RSS ──────────→ ScoreAgent ──→ SQLite ──→ FastAPI ──→ Frontend (5s poll)
+Cricbuzz series/9241 ───────→ DataFetchAgent ─┘
+Gemini 2.5 Flash ───────────→ InsightsAgent ──┘
+YouTube Data API v3 ────────→ MediaAgent ─────┘
+Tenor API v2 ───────────────→ MemeAgent ───────┘
 ```
 
-### 4.2 Components
-✅ **Header**: Sticky navigation with branding and match selector  
-✅ **Scoreboard**: Live score with team logos, event glow animations  
-✅ **RunsGraph**: Recharts line chart showing runs trend  
-✅ **Commentary**: Event-colored feed with animated items  
-✅ **AgentCommentary**: AI insights display with event badges  
-✅ **Highlights**: React-player with YouTube videos  
-✅ **StumpMindChat**: Floating chatbot with typed interface  
+### 4.2 Backend Agents (6 total, asyncio 10s cycle)
 
-### 4.3 Data Orchestration Layer (Dual-Agent Architecture)
-✅ **AgentDataRouter** (`lib/AgentDataRouter.ts`): Classifies requests as STATIC (TTL > 1h) or DYNAMIC (TTL < 1min)  
-✅ **CacheManager** (`lib/CacheManager.ts`): localStorage-backed cache, 1-hour TTL, graceful quota handling  
-✅ **useLibrarianAgent** (`hooks/useLibrarianAgent.ts`): Cache-first static data hook — shows "Compiling Dossier..." on first load  
-✅ **useLiveReporterAgent** (`hooks/useLiveReporterAgent.ts`): Zero-cache high-speed live data polling hook  
-✅ **useAgentData** (`hooks/useAgentData.ts`): Universal hook — auto-routes to Librarian or Live Reporter  
+| Agent | Data Source | Output Table(s) |
+|-------|-------------|-----------------|
+| ScoreAgent | ESPN Cricinfo RSS | `matches`, `live_scores`, `score_progression` |
+| CommentaryAgent | Score delta from DB | `commentary` |
+| InsightsAgent | Gemini 2.5 Flash | `insights` |
+| MediaAgent | YouTube API | `highlights` |
+| MemeAgent | Tenor API v2 | `memes` |
+| DataFetchAgent | Cricbuzz RSC JSON | `points_table`, `upcoming_matches`, `match_results` |
 
-### 4.4 Pages
-✅ **app/page.tsx**: Main dashboard (uses Zustand store + direct api.ts polling)  
-✅ **app/team/[teamId]/page.tsx**: Team details — uses `useLibrarianAgent` with cache + "Compiling Dossier..." state  
-✅ **app/player/[playerId]/page.tsx**: Player details — uses `useLibrarianAgent` with cache + "Compiling Dossier..." state  
+### 4.3 Frontend Dual-Agent Architecture
+
+Two data access patterns implemented as hooks:
+
+| Hook | Agent Role | Strategy | Cache |
+|------|-----------|----------|-------|
+| `useLibrarianAgent` | The Librarian | Cache-first; shows "Compiling Dossier..." on miss | localStorage, 1h TTL |
+| `useLiveReporterAgent` | The Live Reporter | Direct poll every 5s | None |
+| `useAgentData` | Router | Delegates to Librarian or Reporter based on `AgentDataRouter` classification | — |
+
+**Classification rules (`AgentDataRouter.ts`):**
+- STATIC (→ Librarian): team roster, player bio, career stats, coach, home ground, schedule, results
+- DYNAMIC (→ Live Reporter): live score, commentary, run rate, events, memes
+
+### 4.4 Database Tables (SQLite, WAL mode)
+
+| Table | Purpose |
+|-------|---------|
+| `matches` | All tracked matches |
+| `live_scores` | Current batting/bowling state per match |
+| `score_progression` | Ball-by-ball runs (both innings via `batting_team` column) |
+| `commentary` | Events: WICKET, SIX, FOUR, RUNS with text |
+| `highlights` | YouTube video IDs and thumbnails |
+| `insights` | Gemini AI analysis per event |
+| `memes` | Tenor GIF URLs per event |
+| `points_table` | IPL 2026 standings |
+| `upcoming_matches` | Confirmed upcoming fixtures |
+| `match_results` | Completed match scorecards |
+
+### 4.5 REST API Endpoints (17 total)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/matches` | All tracked matches |
+| GET | `/api/live-score` | Live score (all or by `match_id`) |
+| GET | `/api/score-progression` | Runs progression for both innings |
+| GET | `/api/commentary` | Ball-by-ball event feed |
+| GET | `/api/highlights` | YouTube highlight cards |
+| GET | `/api/insights` | Gemini AI insights |
+| GET | `/api/meme` | Latest Tenor GIF by event type |
+| GET | `/api/points-table` | IPL 2026 standings |
+| GET | `/api/upcoming-matches` | Upcoming fixtures |
+| GET | `/api/teams` | All 10 IPL team metadata |
+| GET | `/api/teams/{team_code}` | Team detail: meta + squad + form |
+| GET | `/api/players/{player_name}` | Player stats (Gemini-powered) |
+| GET | `/api/completed-matches` | Completed matches with scorecards |
+| GET | `/api/match-result/{match_id}` | Single match result detail |
+| GET | `/api/search` | Web search proxy |
+| GET | `/api/live-search` | Live score search |
+| POST | `/api/chat` | StumpMind chatbot |
 
 ---
 
-## 5. Deployment
+## 5. Frontend Pages & Components
 
-### 5.1 Local Development
+### 5.1 Main Dashboard (`app/page.tsx`)
+
+Five tabs, sticky navigation:
+
+| Tab | Content |
+|-----|---------|
+| Live Match | MatchSelector + Scoreboard + RunsGraph + Commentary + Highlights + Jumbotron + AgentCommentary |
+| Results | PreviousMatches (MatchResultCard grid) |
+| Schedule | UpcomingMatches |
+| Standings | PointsTable |
+| Teams | TeamsGrid → links to `/team/[teamId]` |
+
+### 5.2 Component Inventory
+
+| Component | Purpose |
+|-----------|---------|
+| `Header` | Sticky nav with branding, match selector, theme toggle |
+| `MatchSelector` | Dropdown: today (LIVE) / previous (COMPLETED) matches |
+| `Scoreboard` | Live innings display; parses full team names from RSS; overs show `"—"` when unknown |
+| `TeamsGrid` | All 10 IPL franchises, box-in-box layout with team colors |
+| `Jumbotron` | LED dot-matrix event display; reads `activeEvent` from Zustand |
+| `EmojiRain` | Cascading emojis child of Jumbotron |
+| `RunsGraph` | Dual-innings Recharts line chart (Runs Progression — Both Innings) |
+| `Commentary` | Ball-by-ball event feed (color-coded by type) |
+| `AgentCommentary` | Match Insights panel (Gemini AI output) |
+| `Highlights` | YouTube highlight cards (no iframe; external link button) |
+| `PreviousMatches` | Grid of `MatchResultCard` components |
+| `MatchResultCard` | Completed match scorecard with winner banner |
+| `PointsTable` | IPL standings with NRR and points |
+| `UpcomingMatches` | Fixture list with venue, date, time |
+| `StumpMindChat` | Floating chatbot; available on all pages |
+| `ClientProviders` | Global wrapper that mounts StumpMindChat |
+
+### 5.3 Shared Libraries
+
+| File | Purpose |
+|------|---------|
+| `lib/store.ts` | Zustand store — score, commentary, events, matches, theme; `TEAM_THEMES` with brand colors |
+| `lib/api.ts` | Typed fetch helpers for all backend endpoints |
+| `lib/AgentDataRouter.ts` | STATIC vs DYNAMIC request classifier |
+| `lib/CacheManager.ts` | localStorage cache, 1-hour TTL, graceful quota handling |
+| `lib/SoundManager.ts` | Audio cues for WICKET, SIX, FOUR |
+
+---
+
+## 6. Deployment
+
+### 6.1 Local Development
 ```bash
-bash deploy.sh local              # Full setup
-bash deploy.sh local-backend      # Backend only
-bash deploy.sh local-frontend     # Frontend only
+bash deploy.sh local    # Install deps, build frontend, seed DB
+bash deploy.sh start    # Start backend (uvicorn) + frontend (node standalone server)
+# Frontend: http://localhost:3000
+# Backend:  http://localhost:8000
 ```
 
-### 5.2 Google Cloud Run
+> The frontend uses Next.js `output: 'standalone'`. Start command runs `node .next/standalone/server.js`, NOT `next start`.
+
+### 6.2 Google Cloud Run (Production)
 ```bash
-bash deploy.sh setup              # First deploy
-bash deploy.sh backend            # Update backend
-bash deploy.sh frontend           # Update frontend
-bash deploy.sh env                # Update API keys
-bash deploy.sh status             # Show URLs
+bash deploy.sh setup      # Enable GCP APIs, create Artifact Registry repo
+bash deploy.sh backend    # Build + push backend image, deploy to Cloud Run
+bash deploy.sh frontend   # Build + push frontend image, deploy to Cloud Run
+bash deploy.sh status     # Show live Cloud Run service URLs
 ```
 
-### 5.3 Environment Variables
-- `GEMINI_API_KEY` (Required) — Google Gemini API key
-- `YOUTUBE_API_KEY` (Optional) — YouTube Data API v3 key
-- `TENOR_API_KEY` (Optional) — Tenor API v2 key
+**GCP prerequisites:**
+- Google Cloud SDK installed and authenticated (`gcloud auth login`)
+- Billing enabled; project set: `gcloud config set project PROJECT_ID`
+- APIs required: Cloud Run, Artifact Registry, Cloud Build
+- Recommended region: `asia-south1` (Mumbai) for IPL audience
+
+### 6.3 Docker Compose (Local Container)
+```bash
+cp .env.example .env   # Fill in API keys
+docker compose up --build
+```
+
+### 6.4 Environment Variables
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `GEMINI_API_KEY` | Optional | AI insights + StumpMind chat; gracefully disabled without it |
+| `YOUTUBE_API_KEY` | Optional | YouTube highlights fetch |
+| `TENOR_API_KEY` | Optional | Meme GIFs on events; meme section hidden without it |
 
 ---
 
-## 6. Technical Requirements
+## 7. Tech Stack
 
-### 6.1 Stack
-- **Backend**: Python 3, FastAPI ≥0.115.0, SQLite, google-genai, httpx
-- **Frontend**: Next.js 15, React 19, TypeScript 5.6+, Tailwind CSS v4, Zustand 5, Framer Motion 12
-- **Frontend Data Layer**: AgentDataRouter + CacheManager + useLibrarianAgent + useLiveReporterAgent + useAgentData
-- **Deployment**: Google Cloud Run, Docker
-
-### 6.2 Code Quality
-✅ No build errors  
-✅ No type mismatches  
-✅ No dead code  
-✅ All imports resolve correctly  
-✅ Linting passes  
-
-### 6.3 Security
-✅ CORS configured for localhost:3000 and *.run.app  
-✅ Environment variables in .env (not in code)  
-✅ SQLite transactions for data integrity  
-✅ No direct frontend → external API calls (all through backend proxy)  
-
-### 6.4 Performance
-✅ Frontend build: <3s  
-✅ Backend response: <100ms  
-✅ Database: Thread-safe with WAL  
-✅ Memory: ~200MB backend, ~150MB frontend  
-✅ Supports 100+ concurrent users  
-
----
-
-## 7. Compliance
-
-✅ **Zero Dummy Data**: All match data from internet APIs  
-✅ **No Rickrolls**: Only real YouTube videos  
-✅ **No Placeholders**: Removed all filler components  
-✅ **Proper Branding**: VibeStump + IPL logos displayed prominently  
-✅ **Theme Support**: Dark mode default, light mode available  
-✅ **Accessible**: Keyboard navigation, semantic HTML  
+| Layer | Technology |
+|-------|-----------|
+| Backend framework | FastAPI ≥ 0.115, Python 3.11 |
+| Database | SQLite, WAL mode |
+| AI engine | Google Gemini 2.5 Flash (`google-genai`) |
+| Live scores | ESPN Cricinfo RSS (primary) |
+| Standings/results | Cricbuzz series 9241 RSC JSON scraping |
+| Frontend | Next.js 15, React 19, TypeScript 5.6+ |
+| Styling | Tailwind CSS v4 (glassmorphism, light-first theme) |
+| State | Zustand 5 |
+| Animation | Framer Motion 12 |
+| Charts | Recharts 2.12 |
+| Deployment | GCP Cloud Run (containerised, separate backend + frontend services) |
 
 ---
 
 ## 8. Success Criteria
 
-- ✅ Builds without errors
-- ✅ Deploys to Google Cloud Run successfully
-- ✅ Frontend connects to backend via proxy
-- ✅ All 5 agents run in background
-- ✅ Live scores update every 5 seconds
-- ✅ AI insights generate within 2 seconds
-- ✅ Chat responses include real Google Search results
-- ✅ Team and player pages load with AI data
-- ✅ No console errors or warnings
-- ✅ All images load correctly (stumps + IPL logos)
+- ✅ Builds without errors (`npm run build` + `uvicorn main:app`)
+- ✅ Deploys to Google Cloud Run via `bash deploy.sh backend/frontend`
+- ✅ Frontend connects to backend via `/api/[...path]` proxy route
+- ✅ All 6 backend agents run on startup and cycle every 10 seconds
+- ✅ Live scores update every 5 seconds on the frontend
+- ✅ Scoreboard correctly parses `"53 *"` (no wickets) and `"200/8"` (with wickets) RSS formats
+- ✅ Jumbotron reacts to WICKET/SIX/FOUR events with LED display + EmojiRain + sound
+- ✅ Points table and fixtures populated from Cricbuzz on startup
+- ✅ Team pages show real IPL 2026 squads, DB-sourced results and upcoming fixtures
+- ✅ Light theme is default; dark mode toggleable
+- ✅ No console errors or broken UI on empty data states
 
 ---
 
 ## 9. Deliverables
 
-📦 **Code**
-- ✅ `/backend` — All Python/FastAPI code with agents
-- ✅ `/frontend` — All Next.js/React/TypeScript code
-- ✅ `deploy.sh` — Deployment script for local + GCloud
-- ✅ `docker-compose.yml` — Local Docker setup
-
-📚 **Documentation**
-- ✅ `README.md` — Project overview and quick start
-- ✅ `DEPLOY_README.md` — Detailed deployment guide
-- ✅ `VibeStump_Solution.md` — Solution architecture
-- ✅ `requirements.md` — This document
-- ✅ `architecture.puml` — PlantUML diagram
-- ✅ `presentation_guide.md` — Presentation notes
-
-📁 **Assets**
-- ✅ `/frontend/public/stumps-logo.png` — Brand logo
-- ✅ `/frontend/public/ipl-logo.png` — IPL logo
-
----
-
-Made with ❤️ for IPL fans 🏏
-- **Environment Variables**: Use `GEMINI_API_KEY` for all agentic features and ensure it is properly injected in production.
-- **Documentation**: Maintain an updated `README.md` and a comprehensive `architecture.puml` diagram.
-
----
-
-## 5. Deployment Audit & Validation
-- Conduct thorough reviews of the deployed application to identify and fix 404 errors, CSS glitches, or data synchronization issues.
-- Ensure the application is "Production-Ready" before final sign-off.
-
----
-
-*Document Author: Sundareshwaran Sukumar*
+| Artifact | Location | Description |
+|----------|----------|-------------|
+| Backend | `backend/` | FastAPI app, 6 agents, SQLite helpers, tools, seed data |
+| Frontend | `frontend/` | Next.js app, 16 components, dual-agent hooks, Zustand store |
+| Deploy script | `deploy.sh` | Local setup + GCP Cloud Run deployment |
+| Docker Compose | `docker-compose.yml` | Local containerised run |
+| Architecture | `architecture.puml` | PlantUML system diagram (v2.0.0) |
+| Documentation | `README.md` | Project overview, quick start, design principles |
+| Requirements | `requirements.md` | This document |
+| Brand assets | `frontend/public/` | `stumps-logo.png`, `ipl-logo.png`, `manifest.json`, sounds |

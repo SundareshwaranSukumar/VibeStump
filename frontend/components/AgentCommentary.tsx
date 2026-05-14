@@ -12,14 +12,14 @@ export default function AgentCommentary() {
             <div className="flex items-center gap-2 mb-4">
                 <Sparkles className="w-4 h-4 text-[rgb(var(--color-primary))]" />
                 <h3 className="text-sm font-semibold text-[rgb(var(--color-muted))] uppercase tracking-wider">
-                    AI Insights
+                    Match Insights
                 </h3>
             </div>
 
             <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
                 {insights.length === 0 ? (
                     <div className="text-sm text-[rgb(var(--color-muted))] text-center py-8">
-                        AI insights will appear for match events...
+                        Live match insights are generated as key events happen
                     </div>
                 ) : (
                     <AnimatePresence initial={false}>

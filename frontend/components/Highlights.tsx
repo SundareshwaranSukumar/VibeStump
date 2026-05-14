@@ -31,7 +31,7 @@ export default function Highlights() {
           <Youtube className="w-4 h-4" /> Match Highlights
         </h3>
         <div className="text-sm text-[rgb(var(--color-muted))] text-center py-6">
-          No highlights available yet.
+          Highlights will appear here after matches are completed.
         </div>
       </div>
     );

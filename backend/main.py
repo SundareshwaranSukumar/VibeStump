@@ -33,7 +33,7 @@ from agents import (
     get_team_details_ai,
     get_player_details_ai,
 )
-from tools import IPL_TEAMS, get_team_info, get_squad
+from tools import IPL_TEAMS, get_team_info, get_squad, search_web, search_ipl_scores
 from seed import run_seed
 
 
@@ -45,8 +45,9 @@ _agent_task = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _agent_task
-    print("[VibeStump] Backend starting — seeding data + initializing agents...")
-    run_seed()  # Seed demo data if DB is empty
+    print("[VibeStump] Backend starting — initializing DB + starting real-time agents...")
+    run_seed()  # Seed verified IPL 2026 data; agents override with live data on startup
+    # ScoreAgent polls ESPN Cricinfo RSS; DataFetchAgent scrapes Cricbuzz on first cycle
     _agent_task = asyncio.create_task(run_agent_loop())
     yield
     print("[VibeStump] Shutting down agents...")
@@ -65,7 +66,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="VibeStump API",
     description="Agentic Premier League Backend",
-    version="1.0.0",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -203,3 +204,17 @@ async def api_match_result(match_id: str):
     """Get detailed result data for a specific completed match."""
     result = get_match_result(match_id)
     return result if result else {"error": "Match result not found"}
+
+
+@app.get("/api/search")
+async def api_search(q: str = "IPL 2026 latest"):
+    """Search the web for latest IPL news and scores via DuckDuckGo."""
+    results = search_web(q, max_results=5)
+    return {"query": q, "results": results}
+
+
+@app.get("/api/live-search")
+async def api_live_search():
+    """Fetch live IPL scores from web search."""
+    results = search_ipl_scores()
+    return {"results": results}

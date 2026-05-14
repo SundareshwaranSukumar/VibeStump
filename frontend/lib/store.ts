@@ -119,7 +119,7 @@ export interface VibeState {
 }
 
 export const useVibeStore = create<VibeState>((set) => ({
-  theme: 'dark',
+  theme: 'light',
   selectedMatchId: null,
   matches: [],
   score: null,

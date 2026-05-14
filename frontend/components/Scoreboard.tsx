@@ -13,9 +13,9 @@
  */
 
 import {
-    getTeamLogo, resolveTeamCode, TEAM_THEMES,
-    useVibeStore,
-    type CommentaryItem, type LiveScore, type TeamCode,
+  getTeamLogo, resolveTeamCode, TEAM_THEMES,
+  useVibeStore,
+  type CommentaryItem, type LiveScore, type TeamCode,
 } from '@/lib/store';
 import { AnimatePresence, motion, useAnimation } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
@@ -83,13 +83,24 @@ interface InningsInfo { team: string; score: string; overs: string }
 function parseInnings(raw: string): InningsInfo[] {
   if (!raw) return [];
   try {
+    // Remove result suffix: "Team A 200/8 v Team B 142/3 — RCB won by 6 wkts"
     const part = raw.split('—')[0].trim();
-    return part.split(/ v (?=[A-Z])/g).map((seg) => {
-      const m = seg.trim().match(/^([A-Z]+)\s+([\d/\-]+)\s*\(([^)]+)\)/);
-      if (m) return { team: m[1], score: m[2], overs: m[3] };
-      const s = seg.trim().match(/^([A-Z]+)\s+([\d/]+)/);
-      if (s) return { team: s[1], score: s[2], overs: '' };
-      return { team: seg.trim().slice(0, 5), score: '', overs: '' };
+    // Split on " v " to get each innings segment
+    const segments = part.split(/ v /);
+    if (segments.length < 2) return [];
+
+    return segments.map((seg) => {
+      seg = seg.trim();
+      // Match score at end of segment: "200/8", "53/2 *", "53 *", "53*"
+      // Pattern: digits, optional /digits, optional *, optional (N.N ov)
+      const m = seg.match(/(\d+(?:\/\d+)?)\s*\*?\s*(?:\(([^)]*ov[^)]*)\))?(?:\s*[-–—].*)?$/i);
+      if (!m) return { team: seg.slice(0, 25).trim(), score: '', overs: '' };
+      const score = m[1];  // "200/8" or "53" (without star)
+      const overs = m[2] ? m[2].replace(/\s*ov.*/i, '').trim() : '';
+      // Team name = everything before the score match starts
+      const matchStart = seg.lastIndexOf(m[0]);
+      const team = seg.slice(0, matchStart).trim() || seg.trim();
+      return { team, score, overs };
     });
   } catch { return []; }
 }
@@ -98,8 +109,13 @@ function needsText(s: LiveScore): string {
   if (!s.target || s.target === '-' || s.target === '0') return '';
   const needed = parseInt(s.target) - s.runs;
   if (needed <= 0) return '';
-  const overs = parseFloat(s.overs);
-  const bowled = Math.floor(overs) * 6 + Math.round((overs % 1) * 10);
+  // Overs may be "—" or "" when not available from RSS
+  const rawOvers = parseFloat(s.overs);
+  if (isNaN(rawOvers) || rawOvers === 0) {
+    // Overs unknown — just show runs needed
+    return `Need ${needed} to win`;
+  }
+  const bowled = Math.floor(rawOvers) * 6 + Math.round((rawOvers % 1) * 10);
   const left = 120 - bowled;
   if (left <= 0) return '';
   return `Need ${needed} from ${left} ball${left !== 1 ? 's' : ''}`;
@@ -428,7 +444,9 @@ function TeamRow({
             {runsDisplay}
           </motion.p>
         </AnimatePresence>
-        <p className="text-[11px] text-[rgb(var(--color-muted))]">({overs} ov)</p>
+        {overs && overs !== '—' && (
+          <p className="text-[11px] text-[rgb(var(--color-muted))]">({overs} ov)</p>
+        )}
       </div>
     </div>
   );
@@ -579,8 +597,10 @@ export default function Scoreboard() {
                 const done = !isBatting && i === 0 && innings.length === 2;
                 const runsDisplay = isBatting
                   ? `${score.runs}/${score.wickets}`
-                  : inn.score;
-                const overs = isBatting ? score.overs : inn.overs;
+                  : inn.score || '—';
+                const rawOvers = isBatting ? score.overs : inn.overs;
+                // Show "—" when overs are unknown (RSS feed doesn't include overs)
+                const overs = rawOvers && rawOvers !== '0.0' && rawOvers !== '0' ? rawOvers : '—';
                 return (
                   <TeamRow
                     key={inn.team}
@@ -599,7 +619,7 @@ export default function Scoreboard() {
                 <TeamRow
                   name={score.batting_team} code={battingCode}
                   runsDisplay={`${score.runs}/${score.wickets}`}
-                  overs={score.overs}
+                  overs={score.overs && score.overs !== '0.0' ? score.overs : '—'}
                   isBatting innings1Done={false} isCompleted={isCompleted}
                 />
                 <TeamRow

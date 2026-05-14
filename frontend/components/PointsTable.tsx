@@ -38,9 +38,8 @@ export default function PointsTable({ fullPage = false }: { fullPage?: boolean }
   const displayRows = fullPage ? rows : rows.slice(0, 6);
 
   return (
-    <div className={`glass rounded-2xl overflow-hidden ${
-      fullPage ? 'w-full' : ''
-    }`}>
+    <div className={`glass rounded-2xl overflow-hidden ${fullPage ? 'w-full' : ''
+      }`}>
 
       {!fullPage && (
         <div className="flex items-center gap-2 px-5 pt-5 mb-3">
@@ -59,21 +58,21 @@ export default function PointsTable({ fullPage = false }: { fullPage?: boolean }
         </div>
       ) : rows.length === 0 ? (
         <p className="text-sm text-[rgb(var(--color-muted))] text-center py-8">
-          Points table loading…
+          Fetching live standings from web…
         </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="text-[rgb(var(--color-muted))] border-b border-[rgba(var(--color-border),0.2)] bg-[rgba(var(--color-surface),0.4)]">
-                <th className={`text-left font-semibold ${ fullPage ? 'py-3 px-5 text-xs' : 'py-2 px-5 text-[10px]' }`}>#</th>
-                <th className={`text-left font-semibold ${ fullPage ? 'py-3 px-2 text-xs' : 'py-2 px-2 text-[10px]' }`}>Team</th>
-                <th className={`text-center font-semibold ${ fullPage ? 'py-3 px-3 text-xs' : 'py-2 px-2 text-[10px]' }`}>P</th>
-                <th className={`text-center font-semibold ${ fullPage ? 'py-3 px-3 text-xs' : 'py-2 px-2 text-[10px]' }`}>W</th>
-                <th className={`text-center font-semibold ${ fullPage ? 'py-3 px-3 text-xs' : 'py-2 px-2 text-[10px]' }`}>L</th>
+                <th className={`text-left font-semibold ${fullPage ? 'py-3 px-5 text-xs' : 'py-2 px-5 text-[10px]'}`}>#</th>
+                <th className={`text-left font-semibold ${fullPage ? 'py-3 px-2 text-xs' : 'py-2 px-2 text-[10px]'}`}>Team</th>
+                <th className={`text-center font-semibold ${fullPage ? 'py-3 px-3 text-xs' : 'py-2 px-2 text-[10px]'}`}>P</th>
+                <th className={`text-center font-semibold ${fullPage ? 'py-3 px-3 text-xs' : 'py-2 px-2 text-[10px]'}`}>W</th>
+                <th className={`text-center font-semibold ${fullPage ? 'py-3 px-3 text-xs' : 'py-2 px-2 text-[10px]'}`}>L</th>
                 {fullPage && <th className="text-center font-semibold py-3 px-3 text-xs">NR</th>}
-                <th className={`text-center font-semibold text-[rgb(var(--color-primary))] ${ fullPage ? 'py-3 px-4 text-xs' : 'py-2 px-2 text-[10px]' }`}>PTS</th>
-                <th className={`text-center font-semibold ${ fullPage ? 'py-3 px-4 text-xs' : 'py-2 px-2 text-[10px]' }`}>NRR</th>
+                <th className={`text-center font-semibold text-[rgb(var(--color-primary))] ${fullPage ? 'py-3 px-4 text-xs' : 'py-2 px-2 text-[10px]'}`}>PTS</th>
+                <th className={`text-center font-semibold ${fullPage ? 'py-3 px-4 text-xs' : 'py-2 px-2 text-[10px]'}`}>NRR</th>
                 {fullPage && <th className="text-center font-semibold py-3 px-4 text-xs">Status</th>}
               </tr>
             </thead>
@@ -99,20 +98,18 @@ export default function PointsTable({ fullPage = false }: { fullPage?: boolean }
                     )}
                     <tr
                       key={row.team}
-                      className={`border-b border-[rgba(var(--color-border),0.1)] transition-colors group ${
-                        isTopFour
+                      className={`border-b border-[rgba(var(--color-border),0.1)] transition-colors group ${isTopFour
                           ? 'bg-[rgba(var(--color-primary),0.03)] hover:bg-[rgba(var(--color-primary),0.07)]'
                           : 'hover:bg-[rgba(var(--color-surface),0.4)]'
-                      }`}
+                        }`}
                     >
                       {/* Rank */}
-                      <td className={`${ fullPage ? 'py-3 px-5' : 'py-2 px-5' } font-bold`}>
+                      <td className={`${fullPage ? 'py-3 px-5' : 'py-2 px-5'} font-bold`}>
                         <span
-                          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold ${
-                            isTopFour
+                          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold ${isTopFour
                               ? 'text-xs'
                               : 'text-[rgb(var(--color-muted))]'
-                          }`}
+                            }`}
                           style={isTopFour ? {
                             background: `rgba(${theme?.glow ?? '100,100,100'},0.18)`,
                             color: theme?.primary ?? '#aaa',
@@ -123,19 +120,19 @@ export default function PointsTable({ fullPage = false }: { fullPage?: boolean }
                       </td>
 
                       {/* Team */}
-                      <td className={`${ fullPage ? 'py-3 px-2' : 'py-2 px-2' }`}>
+                      <td className={`${fullPage ? 'py-3 px-2' : 'py-2 px-2'}`}>
                         <Link href={`/team/${code}`} className="flex items-center gap-2 group/link">
                           {theme?.logo && (
                             <img
                               src={theme.logo}
                               alt={code}
-                              className={`object-contain flex-shrink-0 ${ fullPage ? 'w-7 h-7' : 'w-5 h-5' }`}
+                              className={`object-contain flex-shrink-0 ${fullPage ? 'w-7 h-7' : 'w-5 h-5'}`}
                               onError={(e) => { e.currentTarget.style.display = 'none'; }}
                             />
                           )}
                           <div>
                             <span
-                              className={`font-bold group-hover/link:underline underline-offset-2 ${ fullPage ? 'text-sm' : 'text-xs' }`}
+                              className={`font-bold group-hover/link:underline underline-offset-2 ${fullPage ? 'text-sm' : 'text-xs'}`}
                               style={{ color: theme?.primary ?? 'rgb(var(--color-text))' }}
                             >
                               {row.team}
@@ -161,14 +158,13 @@ export default function PointsTable({ fullPage = false }: { fullPage?: boolean }
                       </td>
 
                       {/* Stats */}
-                      <td className={`text-center text-[rgb(var(--color-muted))] ${ fullPage ? 'py-3 px-3 text-sm' : 'py-2 px-2 text-xs' }`}>{row.played}</td>
-                      <td className={`text-center font-semibold text-green-400 ${ fullPage ? 'py-3 px-3 text-sm' : 'py-2 px-2 text-xs' }`}>{row.won}</td>
-                      <td className={`text-center font-semibold text-red-400 ${ fullPage ? 'py-3 px-3 text-sm' : 'py-2 px-2 text-xs' }`}>{row.lost}</td>
+                      <td className={`text-center text-[rgb(var(--color-muted))] ${fullPage ? 'py-3 px-3 text-sm' : 'py-2 px-2 text-xs'}`}>{row.played}</td>
+                      <td className={`text-center font-semibold text-green-400 ${fullPage ? 'py-3 px-3 text-sm' : 'py-2 px-2 text-xs'}`}>{row.won}</td>
+                      <td className={`text-center font-semibold text-red-400 ${fullPage ? 'py-3 px-3 text-sm' : 'py-2 px-2 text-xs'}`}>{row.lost}</td>
                       {fullPage && <td className="py-3 px-3 text-sm text-center text-[rgb(var(--color-muted))]">{row.nr}</td>}
-                      <td className={`text-center font-black text-[rgb(var(--color-text))] ${ fullPage ? 'py-3 px-4 text-base' : 'py-2 px-2 text-xs' }`}>{row.pts}</td>
-                      <td className={`text-center font-semibold ${ fullPage ? 'py-3 px-4 text-sm' : 'py-2 px-2 text-xs' } ${
-                        row.nrr?.startsWith('+') ? 'text-green-400' : 'text-red-400'
-                      }`}>{row.nrr}</td>
+                      <td className={`text-center font-black text-[rgb(var(--color-text))] ${fullPage ? 'py-3 px-4 text-base' : 'py-2 px-2 text-xs'}`}>{row.pts}</td>
+                      <td className={`text-center font-semibold ${fullPage ? 'py-3 px-4 text-sm' : 'py-2 px-2 text-xs'} ${row.nrr?.startsWith('+') ? 'text-green-400' : 'text-red-400'
+                        }`}>{row.nrr}</td>
 
                       {/* Status badge */}
                       {fullPage && (
@@ -191,7 +187,7 @@ export default function PointsTable({ fullPage = false }: { fullPage?: boolean }
             </tbody>
           </table>
 
-          <div className={`flex items-center gap-4 ${ fullPage ? 'px-5 py-3' : 'px-5 py-2' } text-[10px] text-[rgb(var(--color-muted))] opacity-70 border-t border-[rgba(var(--color-border),0.15)]`}>
+          <div className={`flex items-center gap-4 ${fullPage ? 'px-5 py-3' : 'px-5 py-2'} text-[10px] text-[rgb(var(--color-muted))] opacity-70 border-t border-[rgba(var(--color-border),0.15)]`}>
             <span><span className="font-bold text-green-400">Q</span> = Qualified for playoffs</span>
             {fullPage && <span><span className="font-bold text-red-400">E</span> = Eliminated</span>}
             {!fullPage && (

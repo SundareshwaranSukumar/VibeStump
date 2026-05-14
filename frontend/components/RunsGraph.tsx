@@ -10,37 +10,53 @@ export default function RunsGraph() {
     return (
       <div className="glass rounded-2xl p-5">
         <h3 className="text-sm font-semibold text-[rgb(var(--color-muted))] uppercase tracking-wider mb-4">
-          Runs vs Overs — Both Innings
+          Runs Progression — Both Innings
         </h3>
-        <div className="h-[200px] flex items-center justify-center text-sm text-[rgb(var(--color-muted))]">
-          Waiting for live match data...
+        <div className="h-[200px] flex items-center justify-center text-sm text-[rgb(var(--color-muted))] text-center">
+          <span>Ball-by-ball run chart will appear as the match progresses</span>
         </div>
       </div>
     );
   }
 
-  // Group score points by batting_team
-  const teamGroups: Record<string, { overs: string; runs: number }[]> = {};
+  // Check whether we have meaningful numeric overs data from the feed
+  const hasOvers = scoreProgression.some(p => {
+    const ov = String((p as { overs: string }).overs ?? '');
+    const val = parseFloat(ov);
+    return ov !== '' && !isNaN(val) && val > 0;
+  });
+
+  // Group runs by batting_team in arrival order
+  const teamGroups: Record<string, { x: number | string; runs: number }[]> = {};
+  const teamCounters: Record<string, number> = {};
+
   for (const point of scoreProgression) {
-    const team = (point as { batting_team?: string; overs: string; runs: number }).batting_team || 'Team';
-    if (!teamGroups[team]) teamGroups[team] = [];
-    teamGroups[team].push({ overs: point.overs, runs: point.runs });
+    const team = (point as { batting_team?: string }).batting_team || 'Team';
+    if (!teamGroups[team]) { teamGroups[team] = []; teamCounters[team] = 0; }
+    teamCounters[team]++;
+
+    const x: number | string = hasOvers
+      ? (parseFloat(String((point as { overs: string }).overs)) || teamCounters[team])
+      : teamCounters[team]; // sequential update index when overs unavailable
+
+    teamGroups[team].push({ x, runs: (point as { runs: number }).runs });
   }
 
   const teams = Object.keys(teamGroups);
 
-  // Build a merged dataset keyed by over string
-  const overSet = new Set<string>();
-  for (const pts of Object.values(teamGroups)) {
-    pts.forEach(p => overSet.add(p.overs));
-  }
-  const sortedOvers = Array.from(overSet).sort((a, b) => parseFloat(a) - parseFloat(b));
-
-  const data = sortedOvers.map(ov => {
-    const row: Record<string, string | number> = { overs: ov };
+  // Build merged dataset — align teams by their sequential position in each innings
+  // (update #1 of team A vs update #1 of team B at same stage of their innings)
+  const maxLen = Math.max(...teams.map(t => teamGroups[t].length), 1);
+  const data = Array.from({ length: maxLen }, (_, i) => {
+    const row: Record<string, string | number> = {
+      x: hasOvers
+        ? (teamGroups[teams[0]]?.[i]?.x ?? i + 1)
+        : i + 1
+    };
     for (const team of teams) {
-      const pt = teamGroups[team].find(p => p.overs === ov);
-      if (pt) row[team] = pt.runs;
+      if (i < teamGroups[team].length) {
+        row[team] = teamGroups[team][i].runs;
+      }
     }
     return row;
   });
@@ -52,11 +68,16 @@ export default function RunsGraph() {
     return theme ? theme.primary : COLORS[idx % COLORS.length];
   };
 
+  const xLabel = hasOvers ? 'Overs' : 'Updates';
+  const tooltipLabel = hasOvers
+    ? (v: string | number) => `Over ${v}`
+    : (v: string | number) => `Update #${v}`;
+
   return (
     <div className="glass rounded-2xl p-5">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-[rgb(var(--color-muted))] uppercase tracking-wider">
-          Runs vs Overs — Both Innings
+          Runs Progression — Both Innings
         </h3>
         {score?.target && score.target !== '-' && score.target !== '0' && (
           <span className="text-xs text-[rgb(var(--color-muted))] bg-[rgba(var(--color-surface),0.5)] px-2 py-1 rounded-lg">
@@ -69,10 +90,10 @@ export default function RunsGraph() {
           <LineChart data={data} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(var(--color-border), 0.3)" />
             <XAxis
-              dataKey="overs"
+              dataKey="x"
               tick={{ fill: 'rgb(var(--color-muted))', fontSize: 11 }}
               axisLine={{ stroke: 'rgba(var(--color-border), 0.3)' }}
-              label={{ value: 'Overs', position: 'insideBottom', offset: -2, fill: 'rgb(var(--color-muted))', fontSize: 10 }}
+              label={{ value: xLabel, position: 'insideBottom', offset: -2, fill: 'rgb(var(--color-muted))', fontSize: 10 }}
             />
             <YAxis
               tick={{ fill: 'rgb(var(--color-muted))', fontSize: 11 }}
@@ -87,7 +108,7 @@ export default function RunsGraph() {
                 color: 'rgb(var(--color-text))',
                 fontSize: '12px',
               }}
-              labelFormatter={(v) => `Over ${v}`}
+              labelFormatter={tooltipLabel}
             />
             <Legend
               wrapperStyle={{ fontSize: '11px', paddingTop: '8px', color: 'rgb(var(--color-muted))' }}
@@ -111,3 +132,4 @@ export default function RunsGraph() {
     </div>
   );
 }
+

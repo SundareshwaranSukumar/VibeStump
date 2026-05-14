@@ -14,8 +14,8 @@ export interface StaticCacheEntry {
     lastUpdated: number; // Unix timestamp (ms)
 }
 
-/** 1 hour in milliseconds — static data TTL */
-const STATIC_TTL_MS = 60 * 60 * 1000;
+/** 5 minutes in milliseconds — short TTL keeps team/player data fresh */
+const STATIC_TTL_MS = 5 * 60 * 1000;
 
 const CACHE_PREFIX = 'vibestump:cache:';
 

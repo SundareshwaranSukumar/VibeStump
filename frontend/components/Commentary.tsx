@@ -9,13 +9,13 @@ export default function Commentary() {
   return (
     <div className="glass rounded-2xl p-5">
       <h3 className="text-sm font-semibold text-[rgb(var(--color-muted))] uppercase tracking-wider mb-4">
-        Live Commentary
+        Ball-by-Ball Commentary
       </h3>
 
       <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
         {commentary.length === 0 ? (
           <div className="text-sm text-[rgb(var(--color-muted))] text-center py-8">
-            Waiting for match events...
+            Commentary updates every 10 seconds during live play
           </div>
         ) : (
           <AnimatePresence initial={false}>
@@ -25,15 +25,14 @@ export default function Commentary() {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.3 }}
-                className={`flex items-start gap-3 p-3 rounded-xl transition-colors ${
-                  item.event_type === 'WICKET'
+                className={`flex items-start gap-3 p-3 rounded-xl transition-colors ${item.event_type === 'WICKET'
                     ? 'bg-red-500/10 border-l-2 border-red-400'
                     : item.event_type === 'SIX'
-                    ? 'bg-purple-500/10 border-l-2 border-purple-400'
-                    : item.event_type === 'FOUR'
-                    ? 'bg-green-500/10 border-l-2 border-green-400'
-                    : 'bg-[rgba(var(--color-surface),0.3)]'
-                }`}
+                      ? 'bg-purple-500/10 border-l-2 border-purple-400'
+                      : item.event_type === 'FOUR'
+                        ? 'bg-green-500/10 border-l-2 border-green-400'
+                        : 'bg-[rgba(var(--color-surface),0.3)]'
+                  }`}
               >
                 <EventDot type={item.event_type} />
                 <div className="flex-1 min-w-0">

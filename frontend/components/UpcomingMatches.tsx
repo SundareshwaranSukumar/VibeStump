@@ -56,7 +56,7 @@ function MatchCard({ m, fullPage }: { m: UpcomingMatch; fullPage: boolean }) {
                     {/* Team 1 */}
                     <Link href={`/team/${m.team1}`} className="flex flex-col items-center gap-1.5 group">
                         {t1?.logo && (
-                            <img src={t1.logo} alt={m.team1} className="w-12 h-12 object-contain" onError={(e) => { e.currentTarget.style.display='none'; }} />
+                            <img src={t1.logo} alt={m.team1} className="w-12 h-12 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                         )}
                         <span className="text-sm font-black group-hover:underline underline-offset-2" style={{ color: t1?.primary ?? 'rgb(var(--color-text))' }}>{m.team1}</span>
                     </Link>
@@ -73,7 +73,7 @@ function MatchCard({ m, fullPage }: { m: UpcomingMatch; fullPage: boolean }) {
                     {/* Team 2 */}
                     <Link href={`/team/${m.team2}`} className="flex flex-col items-center gap-1.5 group">
                         {t2?.logo && (
-                            <img src={t2.logo} alt={m.team2} className="w-12 h-12 object-contain" onError={(e) => { e.currentTarget.style.display='none'; }} />
+                            <img src={t2.logo} alt={m.team2} className="w-12 h-12 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                         )}
                         <span className="text-sm font-black group-hover:underline underline-offset-2" style={{ color: t2?.primary ?? 'rgb(var(--color-text))' }}>{m.team2}</span>
                     </Link>
@@ -87,7 +87,7 @@ function MatchCard({ m, fullPage }: { m: UpcomingMatch; fullPage: boolean }) {
         <div className="rounded-xl border border-[rgba(var(--color-border),0.2)] bg-[rgba(var(--color-surface),0.3)] p-3 hover:border-[rgba(var(--color-primary),0.3)] transition-all">
             <div className="flex items-center justify-between gap-2">
                 <div className="flex flex-col items-center min-w-[52px]">
-                    {t1?.logo && <img src={t1.logo} alt={m.team1} className="w-7 h-7 object-contain mb-0.5" onError={(e) => { e.currentTarget.style.display='none'; }} />}
+                    {t1?.logo && <img src={t1.logo} alt={m.team1} className="w-7 h-7 object-contain mb-0.5" onError={(e) => { e.currentTarget.style.display = 'none'; }} />}
                     <span className="text-sm font-black" style={{ color: t1?.primary ?? 'rgb(var(--color-text))' }}>{m.team1}</span>
                 </div>
 
@@ -104,7 +104,7 @@ function MatchCard({ m, fullPage }: { m: UpcomingMatch; fullPage: boolean }) {
                 </div>
 
                 <div className="flex flex-col items-center min-w-[52px]">
-                    {t2?.logo && <img src={t2.logo} alt={m.team2} className="w-7 h-7 object-contain mb-0.5" onError={(e) => { e.currentTarget.style.display='none'; }} />}
+                    {t2?.logo && <img src={t2.logo} alt={m.team2} className="w-7 h-7 object-contain mb-0.5" onError={(e) => { e.currentTarget.style.display = 'none'; }} />}
                     <span className="text-sm font-black" style={{ color: t2?.primary ?? 'rgb(var(--color-text))' }}>{m.team2}</span>
                 </div>
             </div>
@@ -161,7 +161,7 @@ export default function UpcomingMatches({ fullPage = false }: { fullPage?: boole
                 ) : matches.length === 0 ? (
                     <div className="text-center py-20 text-[rgb(var(--color-muted))]">
                         <p className="text-4xl mb-3">🗓️</p>
-                        <p className="text-sm">No upcoming matches scheduled.</p>
+                        <p className="text-sm">Fetching upcoming match schedule…</p>
                     </div>
                 ) : (
                     <div className="space-y-8">
@@ -206,7 +206,7 @@ export default function UpcomingMatches({ fullPage = false }: { fullPage?: boole
                 </div>
             ) : matches.length === 0 ? (
                 <p className="text-sm text-[rgb(var(--color-muted))] text-center py-4">
-                    No upcoming matches scheduled.
+                    Fetching upcoming schedule…
                 </p>
             ) : (
                 <div className="space-y-3">

@@ -20,7 +20,7 @@ skinparam titleFontSize 18
 
 title
 VibeStump — Agentic Premier League
-Real-Time IPL Dashboard v1.0.0
+Real-Time IPL Dashboard v2.0.0
 end title
 
 actor "IPL Fan" as Fan
@@ -58,8 +58,8 @@ rectangle "Frontend - Next.js 15 - Port 3000" as FE {
     note right of RG
       Dual-innings line chart.
       batting_team field groups data.
-      MI solid, CSK dashed line.
       Recharts Legend with team colors.
+      Heading: Runs Progression - Both Innings.
     end note
     [Commentary Feed] as CF
     [Highlights] as HL
@@ -72,16 +72,14 @@ rectangle "Frontend - Next.js 15 - Port 3000" as FE {
   }
   package "Right Column" {
     [AgentCommentary] as AC
-    [AudienceMood] as AM
-    note right of AM
-      Reads activeEvent from Zustand.
-      WICKET  - red    92pct energy bar
-      SIX     - purple 100pct energy bar
-      FOUR    - green  78pct energy bar
-      Default - indigo 42pct energy bar
-      Polls /api/meme for Tenor GIF.
-      Offline: bouncing emoji fallback.
-      Framer Motion float particles.
+    [Jumbotron] as JMB
+    note right of JMB
+      LED dot-matrix stadium display.
+      SIX / FOUR / WICKET / NOBALL / DOT overlays.
+      EmojiRain child component.
+      Strategic Timeout mode with countdown.
+      5s auto-reset after events.
+      Live Score from Zustand store.
     end note
     [PointsTable] as PT
     [UpcomingMatches] as UM
@@ -93,13 +91,13 @@ rectangle "Frontend - Next.js 15 - Port 3000" as FE {
       BAT, WK, ALL, BOWL.
       Captain C and WK markers.
       Bench substitutes section.
-      Upcoming and recent results.
+      Recent results + upcoming from DB.
     end note
     [Player Profile Page] as PPP
     [API Proxy Route] as APR
     note right of APR
-      /api/path forwards requests
-      to FastAPI backend.
+      /api/[...path] handler forwards
+      all requests to FastAPI backend.
     end note
   }
   package "Global Chatbot" {
@@ -153,9 +151,6 @@ rectangle "Frontend - Next.js 15 - Port 3000" as FE {
       instead of fetching directly.
       Internally delegates to Librarian
       or Live Reporter based on routing.
-      Example:
-        useAgentData({ query: CSK Roster,
-          type: auto, teamId: CSK })
     end note
   }
   package "Shared State" {
@@ -165,7 +160,7 @@ rectangle "Frontend - Next.js 15 - Port 3000" as FE {
       commentary, scoreProgression,
       highlights, insights,
       activeEvent, activeEventGlow,
-      matches, theme
+      matches, theme (light default)
     end note
     [api.ts HTTP helpers] as APITS
     [SoundManager] as SND
@@ -178,51 +173,67 @@ rectangle "Frontend - Next.js 15 - Port 3000" as FE {
 }
 
 rectangle "Backend - FastAPI - Port 8000" as BE {
-  package "seed.py Boot Seeder" {
+  package "seed.py Schema Init" {
     [run_seed at lifespan startup] as SEED
     note right of SEED
-      Seeds DB on first boot:
-      2 LIVE matches (CSK-MI, RCB-KKR)
-      3 COMPLETED (SRH-GT, MI-DC, RR-PBKS)
-      MI first innings + CSK second innings
-      10-team points table with NRR
-      5 upcoming fixtures (May 15-18)
-      40+ commentary events seeded
-      Pre-written AI insights per match
+      Initialises all DB tables via init_db().
+      Seeds verified IPL 2026 data:
+        - 10-team points table (RCB #1, 16pts)
+        - Match results 55-57
+        - Upcoming fixtures 59-63
+      Clears stale fabricated data first.
+      Agents override with live Cricbuzz
+      data immediately after startup.
     end note
   }
-  package "5 AI Agents 10s cycle" {
+  package "6 AI Agents 10s cycle" {
     [ScoreAgent] as A1
     note right of A1
-      1. Try ESPN Cricinfo RSS feed.
-      2. FAIL - LiveSimulator engine.
-         Weighted random ball outcomes.
-         Advances all LIVE matches.
-         Stops automatically at 20 overs.
+      1. ESPN Cricinfo RSS feed (PRIMARY).
+         Filters for IPL matches only.
+         Parses: "Punjab Kings 200/8 v Mumbai Indians 53 *"
+         Handles both /N and bare N formats.
+         Overs default to empty (RSS has none).
+      2. Fallback: preserve existing DB
+         data until fresh data arrives.
     end note
     [CommentaryAgent] as A2
     note right of A2
-      Detects score delta per cycle.
-      Templates: WICKET, SIX, FOUR, RUNS.
+      Detects score delta each agent cycle.
+      Events: WICKET, SIX, FOUR, RUNS.
       Writes event_type to commentary table.
     end note
     [InsightsAgent] as A3
     note right of A3
-      1. Try Gemini 2.5 Flash API.
-      2. FAIL - offline insights library
-         (8 pre-written cricket facts).
+      1. Gemini 2.5 Flash with match context.
+      2. Fallback: stores contextual message.
+      fetch_latest_news() called on startup.
     end note
     [MediaAgent] as A4
     note right of A4
-      1. Try YouTube Data API v3.
-      2. FAIL - DEMO_HIGHLIGHTS (4 cards).
-      Frontend: card UI, no iframe embed.
+      1. YouTube Data API v3 search.
+      2. Fallback: extracts video IDs via regex.
+      Frontend: card UI, external links.
     end note
     [MemeAgent] as A5
     note right of A5
-      1. Try Tenor API v2 for GIF URL.
-      2. FAIL - null stored in DB.
-      AudienceMood shows emoji fallback.
+      1. Tenor API v2 for reaction GIF.
+      2. Fallback: emoji reaction in UI.
+      Only fires on WICKET, SIX, FOUR.
+    end note
+    [DataFetchAgent] as A6
+    note right of A6
+      Runs IMMEDIATELY on startup.
+      PRIMARY: Cricbuzz series page scrape.
+        Series ID 9241 (IPL 2026).
+        Fetches Next.js RSC JSON payload.
+        Extracts: points table, fixtures,
+        results, team standings.
+      FALLBACK: hardcoded verified seed data
+        Matches 55-63 (real IPL 2026 fixtures).
+        Ensures dashboard always shows
+        real, meaningful data.
+      Periodic refresh every 30 cycles (~5min).
     end note
   }
   package "REST API Endpoints" {
@@ -241,6 +252,8 @@ rectangle "Backend - FastAPI - Port 8000" as BE {
     [POST chat StumpMind] as EP13
     [GET completed-matches] as EP14
     [GET match-result by id] as EP15
+    [GET search] as EP16
+    [GET live-search] as EP17
   }
   package "SQLite DB WAL mode" {
     database "vibestump.db" as DB {
@@ -248,9 +261,9 @@ rectangle "Backend - FastAPI - Port 8000" as BE {
       [live_scores table] as T2
       [score_progression with batting_team] as T3
       note right of T3
-        batting_team column added via
-        ALTER TABLE migration. Stores
-        both innings under same match_id.
+        batting_team column ensures both
+        innings are stored under same
+        match_id and graphed separately.
       end note
       [commentary with event_type] as T4
       [highlights table] as T5
@@ -258,58 +271,112 @@ rectangle "Backend - FastAPI - Port 8000" as BE {
       [memes table] as T7
       [points_table] as T8
       [upcoming_matches table] as T9
+      [match_results table] as T10
     }
   }
-  package "tools.py Static Data" {
+  package "tools.py" {
     [IPL_TEAMS metadata] as TR1
     [SQUAD_DATA Playing XI and bench] as TR2
     note right of TR2
-      All 10 IPL teams. Per player:
+      All 10 IPL 2026 teams. Per player:
       name, role (BAT, WK, ALL, BOWL),
       captain flag, wicketkeeper flag.
-      Fully offline, no API needed.
+      Real IPL 2026 rosters (Rajat Patidar
+      as RCB captain, etc.)
     end note
-    [get_squad function] as TR3
+    [Cricbuzz scraper] as TR3
+    note right of TR3
+      fetch_cricbuzz_ipl_live()
+        Fetches series page RSC JSON.
+        Series ID 9241 (IPL 2026).
+      fetch_cricbuzz_points_table()
+        Extracts standings from RSC JSON.
+      _extract_rsc_text()
+        Finds self.__next_f data chunks.
+      _find_balanced_json()
+        Extracts valid JSON from RSC stream.
+    end note
+    [RSS + YouTube + Tenor] as TR4
+    note right of TR4
+      fetch_cricinfo_rss()    ESPN Cricinfo RSS
+      parse_match_title()     flexible score parser
+        handles "53 *" (no wickets fallen)
+        and "200/8" (wickets scored) formats
+        overs default to empty string
+      fetch_youtube_highlights() YT API
+      fetch_tenor_meme()      Tenor API
+    end note
   }
 }
 
-cloud "External APIs - ALL OPTIONAL" as EXT {
-  [ESPN Cricinfo RSS] as RSS
+cloud "External Data Sources" as EXT {
+  [ESPN Cricinfo RSS - PRIMARY live scores] as RSS
+  [Cricbuzz.com series 9241 - PRIMARY data] as CB
   [Google Gemini 2.5 Flash] as GEM
   [YouTube Data API v3] as YT
   [Tenor API v2] as TNR
 }
 
 note bottom of EXT
-  OFFLINE-FIRST architecture.
-  Zscaler SSL inspection blocks all
-  four APIs in corporate environments.
-  Every agent has a complete fallback.
-  App never shows a blank screen.
+  ESPN Cricinfo RSS is the PRIMARY live score source.
+  Title format: "Punjab Kings 200/8 v Mumbai Indians 53 *"
+  Updated every ball during live matches.
+  
+  Cricbuzz series/9241 is the PRIMARY source for:
+  points table, match results, upcoming fixtures.
+  Scraped via RSC JSON (no API key required).
+  
+  Gemini 2.5 Flash generates AI insights and
+  powers the StumpMind chatbot.
 end note
 
-package "deploy.sh Zscaler-safe" {
+cloud "GCP Cloud Run" as GCP {
+  [vibestump-api - Backend Service] as GCPBE
+  note right of GCPBE
+    Region: asia-south1 (Mumbai)
+    Port: 8000
+    Image: Artifact Registry
+    Min instances: 1
+    Env: GEMINI_API_KEY, YOUTUBE_API_KEY,
+         TENOR_API_KEY via --set-env-vars
+  end note
+  [vibestump-ui - Frontend Service] as GCPFE
+  note right of GCPFE
+    Region: asia-south1 (Mumbai)
+    Port: 3000
+    Image: Artifact Registry
+    Env: API_URL=vibestump-api Cloud Run URL
+    Output: standalone (node server.js)
+  end note
+}
+
+package "deploy.sh" {
   [deploy.sh local] as DSH1
   note right of DSH1
-    pip install --trusted-host flags
-    bypass Zscaler SSL inspection.
-    npm install --prefer-offline
-    uses npm cache first.
-    Calls init_db() and run_seed()
-    to populate all demo data.
+    Full local setup:
+    pip install -r requirements.txt
+    npm install
+    Initialises DB schema via seed.py.
+    Agents populate live data on startup.
   end note
   [deploy.sh start] as DSH2
   note right of DSH2
-    Backend via nohup env GEMINI_API_KEY
-    uvicorn main:app on port 8000.
-    Frontend via node .next/standalone/server.js
+    uvicorn main:app --host 0.0.0.0 --port 8000
+    node .next/standalone/server.js
     NOT next start (standalone output mode).
+  end note
+  [deploy.sh setup / backend / frontend] as DSH3
+  note right of DSH3
+    setup:    gcloud APIs + Artifact Registry
+    backend:  docker build + push + gcloud run deploy
+    frontend: docker build + push + gcloud run deploy
+    status:   show live Cloud Run service URLs
   end note
 }
 
 Fan --> HDR
 Fan --> MS  : select match
-Fan --> AM  : view crowd mood
+Fan --> JMB : view Jumbotron
 Fan --> TDP : view team squad
 Fan --> SMC : ask cricket question
 
@@ -324,7 +391,7 @@ NP --> EP1  : poll 30s
 NP --> EP5  : poll 120s
 
 EP4 --> ZS  : set activeEvent
-ZS  --> AM  : activeEvent triggers mood
+ZS  --> JMB : activeEvent triggers Jumbotron
 ZS  --> SCB : activeEventGlow animates
 ZS  --> SND : play audio cue
 
@@ -338,21 +405,27 @@ ULA --> CM  : cache check / write
 ULA --> NP  : cache miss - fetch
 ULRA --> NP : direct poll 5s (no cache)
 
-A1  --> RSS  : try live scores
-A3  --> GEM  : try AI insights
-A4  --> YT   : try YouTube data
-A5  --> TNR  : try Tenor GIF
-EP13 --> GEM : try chat response
+' Agent data flows
+A1  --> RSS  : fetch live scores (PRIMARY)
+A2  --> DB   : write commentary on real delta
+A3  --> GEM  : AI insight generation
+A4  --> YT   : try YouTube API
+A5  --> TNR  : fetch Tenor GIF
+A6  --> CB   : scrape Cricbuzz RSC JSON (PRIMARY)
+A6  --> SEED : hardcoded fallback if scrape fails
 
-A1  ..> DB   : fallback LiveSimulator
-A3  ..> DB   : fallback offline insights
-A4  ..> DB   : fallback DEMO_HIGHLIGHTS
-A5  ..> DB   : fallback null stored
-GEM ..> EP13 : fallback offline message
+' Chatbot
+EP13 --> GEM : generate response with DB context
+EP16 --> DB  : search local data
+EP17 --> RSS : live scores
 
-A2  --> DB
+' DB writes
 A1  --> DB
+A3  --> DB   : store insights
+A4  --> DB   : store highlight video IDs
+A6  --> DB   : upsert points_table, upcoming_matches, match_results
 
+' DB reads
 DB --> EP1
 DB --> EP2
 DB --> EP3
@@ -371,5 +444,11 @@ NP --> EP14 : fetch completed matches
 NP --> EP15 : fetch match result
 
 SEED --> DB
+
+' GCP deployment flows
+DSH3 --> GCPBE : gcloud run deploy backend
+DSH3 --> GCPFE : gcloud run deploy frontend
+Fan  --> GCPFE : HTTPS (Cloud Run URL)
+GCPFE --> GCPBE : API_URL proxy
 
 @enduml

@@ -101,13 +101,13 @@ cmd_local() {
         || echo "[WARN] pip install failed — using cached packages"
     echo "[OK] Backend dependencies installed"
 
-    # Initialize DB and seed demo data
+    # Initialize DB schema only — agents fetch real data on startup
     python3 -c "
 from database import init_db
 from seed import run_seed
 init_db()
 run_seed()
-print('[OK] Database initialized and seeded')
+print('[OK] Database schema initialized')
     "
     cd ..
 
@@ -188,13 +188,13 @@ cmd_local_backend() {
         || echo "[WARN] pip install failed — using cached packages"
     echo "[OK] Backend dependencies installed"
 
-    # Initialize DB and seed demo data
+    # Initialize DB schema only — agents fetch real data on startup
     python3 -c "
 from database import init_db
 from seed import run_seed
 init_db()
 run_seed()
-print('[OK] Database initialized and seeded')
+print('[OK] Database schema initialized')
     "
     cd ..
 
@@ -281,9 +281,11 @@ cmd_start() {
     load_env
 
     # Kill any existing processes on those ports
-    kill $(lsof -ti:8000) 2>/dev/null || fuser -k 8000/tcp 2>/dev/null || true
-    kill $(lsof -ti:3000) 2>/dev/null || fuser -k 3000/tcp 2>/dev/null || true
-    sleep 1
+    pkill -f "uvicorn main" 2>/dev/null || true
+    pkill -f "standalone/server.js" 2>/dev/null || true
+    fuser -k 8000/tcp 2>/dev/null || kill $(lsof -ti:8000) 2>/dev/null || true
+    fuser -k 3000/tcp 2>/dev/null || kill $(lsof -ti:3000) 2>/dev/null || true
+    sleep 2
 
     # Start backend (with env vars)
     echo "[START] Backend on http://localhost:8000 ..."
@@ -305,10 +307,10 @@ cmd_start() {
         sleep 1
     done
 
-    # Start frontend (standalone production server)
+    # Start frontend (next start handles static file serving locally)
     echo "[START] Frontend on http://localhost:3000 ..."
     cd frontend
-    nohup node .next/standalone/server.js > /tmp/vibestump-frontend.log 2>&1 &
+    nohup npm start > /tmp/vibestump-frontend.log 2>&1 &
     FRONTEND_PID=$!
     cd ..
     echo "[OK] Frontend started (PID: $FRONTEND_PID)"
