@@ -55,14 +55,14 @@ The `LiveSimulator` class advances all LIVE matches ball-by-ball on every agent 
 - Stops at 20 overs automatically
 
 **Seeded Demo Data (`backend/seed.py`) — IPL 2026:**
-| Type | Count | Details |
-|------|-------|---------|
-| LIVE matches | 2 | CSK vs MI (Match 41), RCB vs KKR (Match 40) |
-| Both innings | ✅ | MI first innings (171/6) + CSK chase (158/7) seeded |
-| Completed matches | 3 | SRH vs GT, MI vs DC, RR vs PBKS |
-| Points Table | 10 teams | Realistic NRR and form |
-| Upcoming fixtures | 5 | May 15–18 schedule |
-| Commentary events | ~40+ | Seeded with WICKET, SIX, FOUR events |
+| Type              | Count    | Details                                             |
+| ----------------- | -------- | --------------------------------------------------- |
+| LIVE matches      | 2        | CSK vs MI (Match 41), RCB vs KKR (Match 40)         |
+| Both innings      | ✅        | MI first innings (171/6) + CSK chase (158/7) seeded |
+| Completed matches | 3        | SRH vs GT, MI vs DC, RR vs PBKS                     |
+| Points Table      | 10 teams | Realistic NRR and form                              |
+| Upcoming fixtures | 5        | May 15–18 schedule                                  |
+| Commentary events | ~40+     | Seeded with WICKET, SIX, FOUR events                |
 
 ---
 
@@ -120,12 +120,12 @@ The `LiveSimulator` class advances all LIVE matches ball-by-ball on every agent 
 
 The component reads `activeEvent` from the Zustand store, which is set whenever the Commentary feed receives a WICKET/SIX/FOUR event. It displays:
 
-| Event | Color | Crowd Energy Bar | Mood Label |
-|-------|-------|-----------------|------------|
-| WICKET | 🔴 Red | 92% | 💀 Wicket! Drama in the Stadium! |
-| SIX | 🟣 Purple | 100% | 🚀 SIX! The Crowd Goes Ballistic! |
-| FOUR | 🟢 Green | 78% | 🏏 FOUR! Beautiful Cricket Shot! |
-| Default | 🔵 Indigo | 42% | 🏟️ Stadium Atmosphere |
+| Event   | Color    | Crowd Energy Bar | Mood Label                       |
+| ------- | -------- | ---------------- | -------------------------------- |
+| WICKET  | 🔴 Red    | 92%              | 💀 Wicket! Drama in the Stadium!  |
+| SIX     | 🟣 Purple | 100%             | 🚀 SIX! The Crowd Goes Ballistic! |
+| FOUR    | 🟢 Green  | 78%              | 🏏 FOUR! Beautiful Cricket Shot!  |
+| Default | 🔵 Indigo | 42%              | 🏟️ Stadium Atmosphere             |
 
 **Features:**
 - **Crowd energy bar** — animated `motion.div` transitions smoothly to the event level
@@ -188,6 +188,47 @@ nohup env GEMINI_API_KEY="$GEMINI_API_KEY" \
     uvicorn main:app --host 0.0.0.0 --port 8000 > /tmp/vibestump-backend.log 2>&1 &
 ```
 Env vars are passed explicitly through `env` to avoid issues with `nohup` dropping the shell environment.
+
+---
+
+### Challenge 9 — Team/Player Pages Re-Fetching on Every Navigation
+
+**Problem:** Every time a user navigated to a team or player page, the backend API was called again — even for the same team — causing unnecessary latency and redundant Gemini calls.
+
+**Solution — Dual-Agent Data Orchestration (`v4.0`):**
+
+A new frontend data layer classifies all requests and routes them to specialized agents:
+
+```
+Component calls useAgentData({ query: 'CSK Roster', type: 'auto' })
+         │
+         ▼
+  AgentDataRouter.classifyRequest()
+         │
+         ├─ STATIC (TTL > 1h)  → useLibrarianAgent
+         │       │
+         │       ├─ CacheManager.get('team_csk') → HIT  → return instantly (0ms)
+         │       └─ Cache MISS → show "Compiling Dossier..." → fetch backend → cache → return
+         │
+         └─ DYNAMIC (TTL < 1min) → useLiveReporterAgent
+                 │
+                 └─ Poll /api/live-score + /api/commentary every 5s
+                    NO cache write. Pure speed.
+```
+
+**Classification rules:**
+
+| Data Type | Examples                                              | Agent         | TTL        |
+| --------- | ----------------------------------------------------- | ------------- | ---------- |
+| STATIC    | Team roster, player bio, career stats, coach, stadium | Librarian     | > 1 hour   |
+| DYNAMIC   | Live score, commentary, run rate, events, memes       | Live Reporter | < 1 minute |
+
+**Files added:**
+- `frontend/lib/CacheManager.ts` — localStorage cache with 1-hour TTL
+- `frontend/lib/AgentDataRouter.ts` — keyword-based request classifier
+- `frontend/hooks/useLibrarianAgent.ts` — cache-first static data hook
+- `frontend/hooks/useLiveReporterAgent.ts` — zero-cache live polling hook
+- `frontend/hooks/useAgentData.ts` — universal routing hook
 
 ---
 
@@ -256,35 +297,35 @@ Env vars are passed explicitly through `env` to avoid issues with `nohup` droppi
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Backend framework | FastAPI ≥ 0.115, Python 3.12 |
-| Database | SQLite WAL mode |
-| AI engine | Google Gemini 2.5 Flash (`google-genai`) |
-| Live data | ESPN Cricinfo RSS + LiveSimulator fallback |
-| Frontend | Next.js 15, React 19, TypeScript 5.6+ |
-| Styling | Tailwind CSS v4 (glassmorphism) |
-| State management | Zustand 5 |
-| Animation | Framer Motion 12 |
-| Charts | Recharts 2.12 |
+| Layer             | Technology                                 |
+| ----------------- | ------------------------------------------ |
+| Backend framework | FastAPI ≥ 0.115, Python 3.12               |
+| Database          | SQLite WAL mode                            |
+| AI engine         | Google Gemini 2.5 Flash (`google-genai`)   |
+| Live data         | ESPN Cricinfo RSS + LiveSimulator fallback |
+| Frontend          | Next.js 15, React 19, TypeScript 5.6+      |
+| Styling           | Tailwind CSS v4 (glassmorphism)            |
+| State management  | Zustand 5                                  |
+| Animation         | Framer Motion 12                           |
+| Charts            | Recharts 2.12                              |
 
 ---
 
 ## Feature Matrix
 
-| Feature | Online | Offline (Zscaler) |
-|---------|--------|-------------------|
-| Live scoreboard | ✅ Real RSS data | ✅ LiveSimulator |
-| Ball-by-ball events | ✅ Real events | ✅ Simulated events |
-| Commentary feed | ✅ Gemini-written | ✅ Template strings |
-| AI insights | ✅ Gemini analysis | ✅ Pre-written facts |
-| StumpMind chat | ✅ Gemini + Search | ✅ Offline message |
-| Highlights | ✅ YouTube API | ✅ Card + external link |
-| Memes | ✅ Tenor GIFs | ✅ Emoji reactions |
-| AudienceMood | ✅ Tenor meme image | ✅ Emoji + crowd bar |
-| Points table | ✅ Real standings | ✅ Seeded IPL 2026 |
-| Team Playing XI | ✅ Seeded squads | ✅ Seeded squads |
-| Runs vs Overs chart | ✅ Both innings | ✅ Both innings |
+| Feature             | Online             | Offline (Zscaler)      |
+| ------------------- | ------------------ | ---------------------- |
+| Live scoreboard     | ✅ Real RSS data    | ✅ LiveSimulator        |
+| Ball-by-ball events | ✅ Real events      | ✅ Simulated events     |
+| Commentary feed     | ✅ Gemini-written   | ✅ Template strings     |
+| AI insights         | ✅ Gemini analysis  | ✅ Pre-written facts    |
+| StumpMind chat      | ✅ Gemini + Search  | ✅ Offline message      |
+| Highlights          | ✅ YouTube API      | ✅ Card + external link |
+| Memes               | ✅ Tenor GIFs       | ✅ Emoji reactions      |
+| AudienceMood        | ✅ Tenor meme image | ✅ Emoji + crowd bar    |
+| Points table        | ✅ Real standings   | ✅ Seeded IPL 2026      |
+| Team Playing XI     | ✅ Seeded squads    | ✅ Seeded squads        |
+| Runs vs Overs chart | ✅ Both innings     | ✅ Both innings         |
 
 ---
 
@@ -335,8 +376,8 @@ VibeStump-main/
 │   ├── app/
 │   │   ├── layout.tsx        # Root layout — mounts global StumpMind chat
 │   │   ├── page.tsx          # Main dashboard
-│   │   ├── team/[teamId]/    # Team detail: Playing XI + Bench
-│   │   ├── player/[playerId]/# Player stats
+│   │   ├── team/[teamId]/    # Team detail: Playing XI + Bench (useLibrarianAgent)
+│   │   ├── player/[playerId]/# Player stats (useLibrarianAgent)
 │   │   └── api/[...path]/    # Next.js → FastAPI proxy
 │   │
 │   ├── components/
@@ -353,14 +394,23 @@ VibeStump-main/
 │   │   ├── AgentCommentary.tsx   # AI insights panel
 │   │   └── StumpMindChat.tsx     # Floating chatbot (mounted via ClientProviders)
 │   │
+│   ├── hooks/                    # Dual-Agent Data Orchestration
+│   │   ├── useLibrarianAgent.ts  # The Librarian: cache-first static data (1h TTL)
+│   │   ├── useLiveReporterAgent.ts # The Live Reporter: zero-cache 5s polling
+│   │   └── useAgentData.ts       # Universal hook — auto-routes to correct agent
+│   │
 │   └── lib/
-│       ├── store.ts          # Zustand store + TEAM_THEMES + activeEvent
-│       ├── api.ts            # Typed fetch helpers
-│       └── SoundManager.ts   # Audio cues
+│       ├── store.ts              # Zustand store + TEAM_THEMES + activeEvent
+│       ├── api.ts                # Typed fetch helpers
+│       ├── AgentDataRouter.ts    # Classifies requests: STATIC vs DYNAMIC
+│       ├── CacheManager.ts       # localStorage cache, 1-hour TTL
+│       └── SoundManager.ts       # Audio cues
 │
-├── architecture.puml     # PlantUML system diagram
+├── architecture.puml     # PlantUML system diagram (v4.0)
+├── docker-compose.yml    # Local Docker orchestration
 ├── deploy.sh             # Local + GCloud deploy script
-└── requirements.md       # Original product requirements
+├── requirements.md       # Product requirements (updated)
+└── README.md             # This file
 ```
 
 ---
@@ -369,6 +419,7 @@ VibeStump-main/
 
 1. **Offline-first** — Every external API call has a fallback; never shows a blank dashboard
 2. **Agentic data flow** — External APIs → Agents → SQLite → FastAPI → Frontend (clean separation)
-3. **Progressive enhancement** — Base experience works without any API key
-4. **Event-driven UI** — WICKET/SIX/FOUR cascade: glow animation → sound → crowd mood → meme
-5. **No broken UI** — All external images use `onError` fallbacks; no silent failures
+3. **Dual-agent data routing** — STATIC data served from cache (Librarian); DYNAMIC data polled live (Reporter)
+4. **Progressive enhancement** — Base experience works without any API key
+5. **Event-driven UI** — WICKET/SIX/FOUR cascade: glow animation → sound → crowd mood → meme
+6. **No broken UI** — All external images use `onError` fallbacks; no silent failures

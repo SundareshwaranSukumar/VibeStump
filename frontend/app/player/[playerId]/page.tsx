@@ -1,10 +1,9 @@
 'use client';
 
-import { fetchPlayerDetail } from '@/lib/api';
+import { useLibrarianAgent } from '@/hooks/useLibrarianAgent';
 import { ArrowLeft, Target, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
 
 interface PlayerDetail {
   name: string;
@@ -19,23 +18,10 @@ interface PlayerDetail {
 export default function PlayerPage() {
   const params = useParams();
   const playerName = decodeURIComponent(params.playerId as string || '');
-  const [player, setPlayer] = useState<PlayerDetail | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const data = await fetchPlayerDetail(playerName);
-        setPlayer(data);
-      } catch (e) {
-        console.error('[PlayerPage]', e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (playerName) load();
-  }, [playerName]);
+  // The Librarian Agent — cache-first with "Compiling Dossier..." on first load
+  const { data: player, loading, loadingLabel, error } =
+    useLibrarianAgent<PlayerDetail>({ type: 'player', name: playerName });
 
   if (loading) {
     return (
@@ -50,6 +36,11 @@ export default function PlayerPage() {
                 <div className="skeleton w-24 h-4" />
               </div>
             </div>
+            {loadingLabel && (
+              <p className="text-sm text-[rgb(var(--color-muted))] text-center animate-pulse mb-4">
+                🗂️ {loadingLabel}
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <div className="skeleton h-24 rounded-xl" />
               <div className="skeleton h-24 rounded-xl" />
@@ -62,11 +53,11 @@ export default function PlayerPage() {
     );
   }
 
-  if (!player) {
+  if (error || !player) {
     return (
       <div className="min-h-screen bg-[rgb(var(--color-bg))] flex items-center justify-center">
         <div className="text-center">
-          <p className="text-lg text-[rgb(var(--color-muted))]">Player not found</p>
+          <p className="text-lg text-[rgb(var(--color-muted))]">{error || 'Player not found'}</p>
           <Link href="/" className="text-sm text-[rgb(var(--color-primary))] mt-2 inline-block hover:underline">
             ← Back to dashboard
           </Link>
@@ -76,9 +67,9 @@ export default function PlayerPage() {
   }
 
   const roleColor = player.role?.toLowerCase().includes('bat') ? 'text-blue-400' :
-                     player.role?.toLowerCase().includes('bowl') ? 'text-green-400' :
-                     player.role?.toLowerCase().includes('all') ? 'text-purple-400' :
-                     'text-amber-400';
+    player.role?.toLowerCase().includes('bowl') ? 'text-green-400' :
+      player.role?.toLowerCase().includes('all') ? 'text-purple-400' :
+        'text-amber-400';
 
   return (
     <div className="min-h-screen bg-[rgb(var(--color-bg))]">

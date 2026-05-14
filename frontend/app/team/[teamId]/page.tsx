@@ -1,11 +1,10 @@
 'use client';
 
-import { fetchTeamDetail } from '@/lib/api';
+import { useLibrarianAgent } from '@/hooks/useLibrarianAgent';
 import { TEAM_THEMES, type TeamCode } from '@/lib/store';
-import { ArrowLeft, Calendar, Shield, Trophy, Users } from 'lucide-react';
+import { ArrowLeft, Calendar, RefreshCw, Shield, Trophy, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
 
 interface Player {
   name: string;
@@ -31,9 +30,9 @@ interface TeamDetail {
 
 const ROLE_STYLES: Record<string, { label: string; bg: string; text: string }> = {
   BAT: { label: 'BAT', bg: 'bg-blue-500/20', text: 'text-blue-400' },
-  WK:  { label: 'WK',  bg: 'bg-amber-500/20', text: 'text-amber-400' },
+  WK: { label: 'WK', bg: 'bg-amber-500/20', text: 'text-amber-400' },
   ALL: { label: 'ALL', bg: 'bg-green-500/20', text: 'text-green-400' },
-  BOWL:{ label: 'BOWL',bg: 'bg-red-500/20', text: 'text-red-400' },
+  BOWL: { label: 'BOWL', bg: 'bg-red-500/20', text: 'text-red-400' },
 };
 
 function PlayerCard({ player, number, accent }: { player: Player; number: number; accent: string }) {
@@ -76,23 +75,10 @@ function PlayerCard({ player, number, accent }: { player: Player; number: number
 export default function TeamPage() {
   const params = useParams();
   const teamId = (params.teamId as string || '').toUpperCase();
-  const [team, setTeam] = useState<TeamDetail | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const data = await fetchTeamDetail(teamId);
-        setTeam(data);
-      } catch (e) {
-        console.error('[TeamPage]', e);
-      } finally {
-        setLoading(false);
-      }
-    };
-    if (teamId) load();
-  }, [teamId]);
+  // The Librarian Agent — cache-first with "Compiling Dossier..." on first load
+  const { data: team, loading, loadingLabel, error, fromCache, refresh } =
+    useLibrarianAgent<TeamDetail>({ type: 'team', id: teamId });
 
   const themeColors = TEAM_THEMES[teamId as TeamCode];
   const accent = themeColors?.primary || '#6366f1';
@@ -103,25 +89,30 @@ export default function TeamPage() {
         <div className="max-w-5xl mx-auto px-6 py-8">
           <div className="skeleton w-32 h-8 mb-8" />
           <div className="glass rounded-2xl p-8">
-            <div className="flex items-center gap-6 mb-8">
+            <div className="flex items-center gap-6 mb-6">
               <div className="skeleton w-24 h-24 rounded-full" />
               <div>
                 <div className="skeleton w-48 h-8 mb-3" />
                 <div className="skeleton w-32 h-4" />
               </div>
             </div>
-            <div className="skeleton w-full h-40" />
+            {loadingLabel && (
+              <p className="text-sm text-[rgb(var(--color-muted))] text-center animate-pulse mt-4">
+                🗂️ {loadingLabel}
+              </p>
+            )}
+            <div className="skeleton w-full h-40 mt-4" />
           </div>
         </div>
       </div>
     );
   }
 
-  if (!team) {
+  if (error || !team) {
     return (
       <div className="min-h-screen bg-[rgb(var(--color-bg))] flex items-center justify-center">
         <div className="text-center">
-          <p className="text-lg text-[rgb(var(--color-muted))]">Team not found</p>
+          <p className="text-lg text-[rgb(var(--color-muted))]">{error || 'Team not found'}</p>
           <Link href="/" className="text-sm text-[rgb(var(--color-primary))] mt-2 inline-block hover:underline">
             ← Back to dashboard
           </Link>
@@ -169,6 +160,18 @@ export default function TeamPage() {
                 >
                   IPL 2026
                 </span>
+                {fromCache && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/20">
+                    ✓ Cached
+                  </span>
+                )}
+                <button
+                  onClick={refresh}
+                  title="Refresh team data"
+                  className="ml-auto p-1.5 rounded-lg hover:bg-[rgba(var(--color-surface),0.5)] text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))] transition-colors"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
           </div>

@@ -10,10 +10,10 @@ import { BarChart2, Calendar, Radio, Trophy, Users } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import AgentCommentary from '@/components/AgentCommentary';
-import AudienceMood from '@/components/AudienceMood';
 import Commentary from '@/components/Commentary';
 import Header from '@/components/Header';
 import Highlights from '@/components/Highlights';
+import Jumbotron, { type JumbotronEvent } from '@/components/Jumbotron';
 import MatchSelector from '@/components/MatchSelector';
 import PointsTable from '@/components/PointsTable';
 import PreviousMatches from '@/components/PreviousMatches';
@@ -25,11 +25,11 @@ import UpcomingMatches from '@/components/UpcomingMatches';
 // ── Tab definitions ────────────────────────────────────────────────
 
 const TABS = [
-  { id: 'live',      label: 'Live',      Icon: Radio,     dot: true  },
-  { id: 'results',   label: 'Results',   Icon: BarChart2,  dot: false },
-  { id: 'schedule',  label: 'Schedule',  Icon: Calendar,   dot: false },
-  { id: 'standings', label: 'Standings', Icon: Trophy,     dot: false },
-  { id: 'teams',     label: 'Teams',     Icon: Users,      dot: false },
+  { id: 'live', label: 'Live', Icon: Radio, dot: true },
+  { id: 'results', label: 'Results', Icon: BarChart2, dot: false },
+  { id: 'schedule', label: 'Schedule', Icon: Calendar, dot: false },
+  { id: 'standings', label: 'Standings', Icon: Trophy, dot: false },
+  { id: 'teams', label: 'Teams', Icon: Users, dot: false },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 
@@ -45,17 +45,29 @@ function SectionHeading({ emoji, title, sub }: { emoji: string; title: string; s
   );
 }
 
+// Map store event types → JumbotronEvent
+function toJumbotronEvent(activeEvent: string | null): JumbotronEvent {
+  if (!activeEvent) return 'none';
+  const map: Record<string, JumbotronEvent> = {
+    'SIX': 'six', 'FOUR': 'four', 'WICKET': 'wicket',
+    'NOBALL': 'noball', 'RUNS': 'dot', 'NONE': 'none',
+  };
+  return map[activeEvent] ?? 'none';
+}
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState<TabId>('live');
+  const [isTimeout, setIsTimeout] = useState(false);
 
   const {
     selectedMatchId, setSelectedMatchId,
     setMatches, setScore, setCommentary, setScoreProgression,
-    setHighlights, setInsights, triggerEvent,
+    setHighlights, setInsights, triggerEvent, activeEvent,
   } = useVibeStore();
 
   const prevCommentaryRef = useRef<string>('');
   const soundInitRef = useRef(false);
+  const jumbotronEvent = toJumbotronEvent(activeEvent);
 
   // Init sound on first interaction
   useEffect(() => {
@@ -161,11 +173,10 @@ export default function Home() {
                   <button
                     key={id}
                     onClick={() => setActiveTab(id)}
-                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all ${
-                      active
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all ${active
                         ? 'bg-[rgba(var(--color-primary),0.14)] text-[rgb(var(--color-primary))] border border-[rgba(var(--color-primary),0.28)]'
                         : 'text-[rgb(var(--color-muted))] hover:text-[rgb(var(--color-text))] hover:bg-[rgba(var(--color-surface),0.5)] border border-transparent'
-                    }`}
+                      }`}
                   >
                     <Icon className="w-3.5 h-3.5 flex-shrink-0" />
                     <span>{label}</span>
@@ -196,8 +207,12 @@ export default function Home() {
                   <Highlights />
                 </div>
                 <div className="flex flex-col gap-5">
+                  <Jumbotron
+                    currentEvent={jumbotronEvent}
+                    isTimeout={isTimeout}
+                    onTimeoutEnd={() => setIsTimeout(false)}
+                  />
                   <AgentCommentary />
-                  <AudienceMood />
                 </div>
               </div>
             </div>
@@ -254,8 +269,13 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="text-center text-[10px] tracking-widest text-[rgb(var(--color-muted))] py-4 opacity-40 border-t border-[rgba(var(--color-border),0.15)]">
-        © 2026 VibeStump — Agentic Premier League. All rights reserved.
+      <footer className="text-center text-xs text-[rgb(var(--color-muted))] py-5 border-t border-[rgba(var(--color-border),0.15)]">
+        <p className="opacity-70 tracking-wide">
+          Made with ❤️ by{' '}
+          <span className="font-semibold text-[rgb(var(--color-text))]">Sundareshwaran Sukumar</span>
+          {' '}· VibeStump — Agentic Premier League
+        </p>
+        <p className="opacity-30 text-[10px] mt-1 tracking-widest">© 2026 VibeStump. All rights reserved.</p>
       </footer>
     </div>
   );

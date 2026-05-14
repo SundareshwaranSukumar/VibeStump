@@ -18,8 +18,10 @@ skinparam noteBackgroundColor #2D1B00
 skinparam titleFontColor #FFFFFF
 skinparam titleFontSize 18
 
-title VibeStump - Agentic Premier League
-Real-Time IPL Dashboard v3.0
+title
+VibeStump — Agentic Premier League
+Real-Time IPL Dashboard v1.0.0
+end title
 
 actor "IPL Fan" as Fan
 
@@ -103,6 +105,59 @@ rectangle "Frontend - Next.js 15 - Port 3000" as FE {
   package "Global Chatbot" {
     [StumpMindChat] as SMC
   }
+  package "Dual-Agent Data Orchestration" {
+    [AgentDataRouter] as ADR
+    note right of ADR
+      Classifies every data request:
+      STATIC  - TTL greater than 1 hour
+        Player profiles, team rosters,
+        career stats, coach, home ground.
+        Route to The Librarian Agent.
+      DYNAMIC - TTL less than 1 minute
+        Live score, commentary, events,
+        run rate, tension index, memes.
+        Route to The Live Reporter Agent.
+      Classification by keyword matching
+      with explicit type override support.
+    end note
+    [CacheManager] as CM
+    note right of CM
+      localStorage-based static cache.
+      TTL: 60 minutes per entry.
+      Zero-latency repeat loads.
+      Never caches DYNAMIC data.
+      Graceful: quota errors skipped.
+    end note
+    [useLibrarianAgent Hook] as ULA
+    note right of ULA
+      The Librarian Agent.
+      1. Check CacheManager first.
+      2. Cache hit  - return instantly.
+      3. Cache miss - show Compiling Dossier.
+      4. Fetch from /api/teams or /api/players.
+      5. Store in CacheManager.
+      Used by: Team Page, Player Page.
+    end note
+    [useLiveReporterAgent Hook] as ULRA
+    note right of ULRA
+      The Live Reporter Agent.
+      Polls /api/live-score and
+      /api/commentary every 5 seconds.
+      No caching. Pure speed.
+      Stops polling on component unmount.
+      Used by: Live Match dashboard.
+    end note
+    [useAgentData Hook] as UAD
+    note right of UAD
+      Universal hook. Components call this
+      instead of fetching directly.
+      Internally delegates to Librarian
+      or Live Reporter based on routing.
+      Example:
+        useAgentData({ query: CSK Roster,
+          type: auto, teamId: CSK })
+    end note
+  }
   package "Shared State" {
     [Zustand Store] as ZS
     note right of ZS
@@ -184,6 +239,8 @@ rectangle "Backend - FastAPI - Port 8000" as BE {
     [GET points-table] as EP11
     [GET upcoming-matches] as EP12
     [POST chat StumpMind] as EP13
+    [GET completed-matches] as EP14
+    [GET match-result by id] as EP15
   }
   package "SQLite DB WAL mode" {
     database "vibestump.db" as DB {
@@ -271,6 +328,16 @@ ZS  --> AM  : activeEvent triggers mood
 ZS  --> SCB : activeEventGlow animates
 ZS  --> SND : play audio cue
 
+' Dual-Agent Routing
+TDP --> UAD : useAgentData team
+PPP --> UAD : useAgentData player
+UAD --> ADR : classify request
+ADR --> ULA : STATIC route
+ADR --> ULRA : DYNAMIC route
+ULA --> CM  : cache check / write
+ULA --> NP  : cache miss - fetch
+ULRA --> NP : direct poll 5s (no cache)
+
 A1  --> RSS  : try live scores
 A3  --> GEM  : try AI insights
 A4  --> YT   : try YouTube data
@@ -296,7 +363,12 @@ DB --> EP7
 DB --> EP8
 DB --> EP11
 DB --> EP12
+DB --> EP14
+DB --> EP15
 TR2 --> EP9
+
+NP --> EP14 : fetch completed matches
+NP --> EP15 : fetch match result
 
 SEED --> DB
 

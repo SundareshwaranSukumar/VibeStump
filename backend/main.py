@@ -65,7 +65,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="VibeStump API",
     description="Agentic Premier League Backend",
-    version="3.0.0",
+    version="1.0.0",
     lifespan=lifespan,
 )
 
@@ -92,7 +92,7 @@ class ChatRequest(BaseModel):
 
 @app.get("/")
 async def root():
-    return {"status": "online", "service": "vibestump-api", "version": "3.0.0"}
+    return {"status": "online", "service": "vibestump-api", "version": "1.0.0"}
 
 
 @app.get("/api/matches")

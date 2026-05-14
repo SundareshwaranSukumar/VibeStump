@@ -197,8 +197,21 @@ class ScoreAgent:
     Falls back to live simulation if RSS is unavailable."""
 
     async def poll(self) -> list[dict]:
+        IPL_KEYWORDS = list(IPL_TEAMS.keys()) + [
+            "royal challengers", "chennai super kings", "mumbai indians",
+            "kolkata knight riders", "sunrisers hyderabad", "delhi capitals",
+            "rajasthan royals", "punjab kings", "gujarat titans", "lucknow super giants",
+        ]
+
         try:
-            matches = await fetch_cricinfo_rss()
+            all_matches = await fetch_cricinfo_rss()
+            # ── STRICT IPL-ONLY FILTER ────────────────────────────────────
+            matches = []
+            for m in all_matches:
+                title_lower = m["title"].lower()
+                if any(kw.lower() in title_lower for kw in IPL_KEYWORDS):
+                    matches.append(m)
+            # ─────────────────────────────────────────────────────────────
             if matches:
                 for m in matches:
                     match_id = m["id"]
@@ -596,94 +609,6 @@ def get_player_details_ai(player_name: str) -> dict:
                 "total_runs": "N/A", "total_wickets": "N/A", "current_season": "Unable to fetch player data."}
 
 
-
-# ── Score Agent ─────────────────────────────────────────────────────
-
-class ScoreAgent:
-    """Polls ESPN Cricinfo RSS feed and updates live scores in the DB."""
-
-    async def poll(self) -> list[dict]:
-        matches = await fetch_cricinfo_rss()
-        for m in matches:
-            match_id = m["id"]
-            upsert_match(match_id, m["title"], m["status"], m.get("batting_team", ""), m.get("bowling_team", ""))
-            upsert_live_score(match_id, {
-                "batting_team": m.get("batting_team", ""),
-                "bowling_team": m.get("bowling_team", ""),
-                "runs": m.get("runs", 0),
-                "wickets": m.get("wickets", 0),
-                "overs": m.get("overs", "0.0"),
-                "target": m.get("target", "-"),
-                "run_rate": m.get("run_rate", 0.0),
-                "required_rate": m.get("required_rate", 0.0),
-                "match_status": m.get("match_status", ""),
-                "raw_title": m.get("raw_title", m["title"]),
-            })
-            # Add to score progression
-            if m.get("runs", 0) > 0:
-                add_score_point(match_id, m.get("overs", "0.0"), m.get("runs", 0), m.get("wickets", 0))
-        return matches
-
-
-# ── Commentary Agent ────────────────────────────────────────────────
-
-class CommentaryAgent:
-    """Detects events by comparing score changes and generates commentary."""
-
-    def detect_events(self, match_id: str, current: dict) -> list[dict]:
-        global _previous_scores
-        events = []
-        prev = _previous_scores.get(match_id)
-
-        if prev is None:
-            _previous_scores[match_id] = current.copy()
-            return events
-
-        prev_runs = prev.get("runs", 0)
-        prev_wickets = prev.get("wickets", 0)
-        curr_runs = current.get("runs", 0)
-        curr_wickets = current.get("wickets", 0)
-        batting = current.get("batting_team", "Team")
-
-        run_diff = curr_runs - prev_runs
-        wicket_diff = curr_wickets - prev_wickets
-
-        if wicket_diff > 0:
-            events.append({
-                "type": "WICKET",
-                "text": f"WICKET! {batting} loses a wicket! Score: {curr_runs}/{curr_wickets}",
-                "team": batting,
-            })
-        if run_diff >= 6:
-            events.append({
-                "type": "SIX",
-                "text": f"SIX! {batting} smashes it for 6! Score: {curr_runs}/{curr_wickets}",
-                "team": batting,
-            })
-        elif run_diff == 4:
-            events.append({
-                "type": "FOUR",
-                "text": f"FOUR! {batting} finds the boundary! Score: {curr_runs}/{curr_wickets}",
-                "team": batting,
-            })
-        elif run_diff > 0 and wicket_diff == 0:
-            events.append({
-                "type": "RUNS",
-                "text": f"{batting} scores {run_diff} run(s). Score: {curr_runs}/{curr_wickets}",
-                "team": batting,
-            })
-
-        _previous_scores[match_id] = current.copy()
-        return events
-
-    def process(self, match_id: str, current: dict):
-        events = self.detect_events(match_id, current)
-        for event in events:
-            add_commentary(match_id, event["text"], event["type"])
-        return events
-
-
-# ── Insights Agent ──────────────────────────────────────────────────
 
 class InsightResult(BaseModel):
     insight: str = Field(description="A compelling 2-3 sentence cricket insight about this moment")

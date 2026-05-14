@@ -28,12 +28,14 @@ Build a production-grade, AI-powered IPL cricket dashboard that delivers real-ti
 ✅ **AI-Generated Insights**: Gemini-powered team analysis and player stats  
 
 ### 2.3 AI-Powered Features
-✅ **5 Dedicated Agents**:
+✅ **7 Dedicated Agents** (5 backend + 2 frontend):
   1. **ScoreAgent** — Polls cricinfo RSS every 10s
   2. **CommentaryAgent** — Detects score deltas, generates events
   3. **InsightsAgent** — Gemini analysis and predictions
   4. **MediaAgent** — YouTube highlights fetching
   5. **MemeAgent** — Tenor meme images for fun moments
+  6. **The Librarian Agent** (`useLibrarianAgent`) — Frontend static data with 1-hour localStorage cache
+  7. **The Live Reporter Agent** (`useLiveReporterAgent`) — Frontend live polling at 5s intervals, zero cache
 
 ✅ **StumpMind Chatbot** — Ask questions about matches, players, teams with Google Search  
 ✅ **Real-Time Commentary** — Event-based (WICKET, SIX, FOUR, etc.) with color-coded UI  
@@ -115,10 +117,17 @@ StumpMind Chat (Floating Button)
 ✅ **Highlights**: React-player with YouTube videos  
 ✅ **StumpMindChat**: Floating chatbot with typed interface  
 
-### 4.3 Pages
-✅ **app/page.tsx**: Main dashboard  
-✅ **app/team/[teamId]/page.tsx**: Team details  
-✅ **app/player/[playerId]/page.tsx**: Player details  
+### 4.3 Data Orchestration Layer (Dual-Agent Architecture)
+✅ **AgentDataRouter** (`lib/AgentDataRouter.ts`): Classifies requests as STATIC (TTL > 1h) or DYNAMIC (TTL < 1min)  
+✅ **CacheManager** (`lib/CacheManager.ts`): localStorage-backed cache, 1-hour TTL, graceful quota handling  
+✅ **useLibrarianAgent** (`hooks/useLibrarianAgent.ts`): Cache-first static data hook — shows "Compiling Dossier..." on first load  
+✅ **useLiveReporterAgent** (`hooks/useLiveReporterAgent.ts`): Zero-cache high-speed live data polling hook  
+✅ **useAgentData** (`hooks/useAgentData.ts`): Universal hook — auto-routes to Librarian or Live Reporter  
+
+### 4.4 Pages
+✅ **app/page.tsx**: Main dashboard (uses Zustand store + direct api.ts polling)  
+✅ **app/team/[teamId]/page.tsx**: Team details — uses `useLibrarianAgent` with cache + "Compiling Dossier..." state  
+✅ **app/player/[playerId]/page.tsx**: Player details — uses `useLibrarianAgent` with cache + "Compiling Dossier..." state  
 
 ---
 
@@ -152,6 +161,7 @@ bash deploy.sh status             # Show URLs
 ### 6.1 Stack
 - **Backend**: Python 3, FastAPI ≥0.115.0, SQLite, google-genai, httpx
 - **Frontend**: Next.js 15, React 19, TypeScript 5.6+, Tailwind CSS v4, Zustand 5, Framer Motion 12
+- **Frontend Data Layer**: AgentDataRouter + CacheManager + useLibrarianAgent + useLiveReporterAgent + useAgentData
 - **Deployment**: Google Cloud Run, Docker
 
 ### 6.2 Code Quality
