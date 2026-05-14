@@ -258,24 +258,43 @@ class ScoreAgent:
 # ── Commentary Agent ────────────────────────────────────────────────
 
 _WICKET_TEMPLATES = [
-    "WICKET! {batting} loses a wicket! Score: {runs}/{wickets} ({overs} ov)",
-    "OUT! {batting} batsman dismissed. Score now {runs}/{wickets} ({overs} ov)",
+    "WICKET! {batting} loses a wicket! Score: {runs}/{wickets}",
+    "OUT! {batting} batsman dismissed. Score now {runs}/{wickets}",
     "WICKET! Huge breakthrough! {batting} {runs}/{wickets}",
 ]
 _SIX_TEMPLATES = [
-    "SIX! {batting} clears the boundary! Score: {runs}/{wickets} ({overs} ov)",
+    "SIX! {batting} clears the boundary! Score: {runs}/{wickets}",
     "MAXIMUM! {batting} smashes it over the ropes. {runs}/{wickets}",
     "SIX! The crowd erupts! {batting} are flying at {runs}/{wickets}",
 ]
 _FOUR_TEMPLATES = [
-    "FOUR! {batting} finds the gap! {runs}/{wickets} ({overs} ov)",
+    "FOUR! {batting} finds the gap! {runs}/{wickets}",
     "Beautiful shot for FOUR! {batting} batting well at {runs}/{wickets}",
     "Four runs! {batting} working the ball to the boundary. {runs}/{wickets}",
 ]
 _RUNS_TEMPLATES = [
-    "{batting} scoring steadily. Score: {runs}/{wickets} ({overs} ov)",
-    "Good cricket from {batting}. {runs}/{wickets} ({overs} ov)",
+    "{batting} scoring steadily. Score: {runs}/{wickets}",
+    "Good cricket from {batting}. Score: {runs}/{wickets}",
 ]
+
+_INSIGHT_FALLBACK = {
+    "WICKET": [
+        "🎯 Wicket! {mc} — Score: {sc}. A key breakthrough that could change the match!",
+        "OUT! {mc} loses another wicket at {sc}. The fielding side is pumped!",
+    ],
+    "SIX": [
+        "💥 Massive SIX! {mc} goes big — Score: {sc}. What a shot!",
+        "🚀 Maximum! {mc} clears the boundary. {sc} on the board!",
+    ],
+    "FOUR": [
+        "🏏 FOUR! {mc} finds the gap beautifully. Score: {sc}.",
+        "💫 Boundary! {mc} is batting well. {sc} on the scoreboard.",
+    ],
+    "RUNS": [
+        "📈 {mc} building momentum. {sc} and going strong!",
+        "🏏 Steady batting from {mc}. {sc} on the scoreboard.",
+    ],
+}
 
 
 class CommentaryAgent:
@@ -385,13 +404,11 @@ Use the web context to make the insight accurate and current."""
             except Exception as e:
                 print(f"[InsightsAgent] Gemini failed: {e}")
 
-        # DDG-only fallback: use web context directly
-        if web_context:
-            insight = f"📊 {web_context.split(chr(10))[0]}"
-            add_insight(match_id, insight, event_type)
-            return insight
-
-        return None
+        # DDG-only fallback: use templated insight instead of raw web text
+        tmpl = random.choice(_INSIGHT_FALLBACK.get(event_type, _INSIGHT_FALLBACK["RUNS"]))
+        insight = tmpl.format(mc=match_context, sc=score_context)
+        add_insight(match_id, insight, event_type)
+        return insight
 
     async def fetch_latest_news(self):
         """Fetch latest IPL news and store as insights."""
@@ -819,7 +836,8 @@ async def run_agent_loop():
                     if event["type"] in ("WICKET", "SIX", "FOUR"):
                         batting = m.get("batting_team", "Team")
                         bowling = m.get("bowling_team", "Team")
-                        score_ctx = f"{m.get('runs', 0)}/{m.get('wickets', 0)} ({m.get('overs', '0.0')} ov)"
+                        overs_val = m.get('overs', '')
+                        score_ctx = f"{m.get('runs', 0)}/{m.get('wickets', 0)}" + (f" ({overs_val} ov)" if overs_val else "")
                         match_ctx = f"{batting} vs {bowling}"
                         await insights_agent.process_event(match_id, event["type"], match_ctx, score_ctx)
                         await meme_agent.fetch(event["type"])
@@ -848,6 +866,62 @@ def stop_agents():
 
 
 # ── StumpMind Chatbot ───────────────────────────────────────────────
+
+def _build_stumpmind_answer(message: str, db_context: str, web_context: str) -> str:
+    """Build a smart conversational reply from DB + web context without Gemini."""
+    msg_lower = message.lower()
+
+    # Parse db_context into sections
+    standings_lines = ""
+    results_lines = ""
+    if "\n\nRecent Results:" in db_context:
+        idx = db_context.index("\n\nRecent Results:")
+        standings_lines = db_context[:idx].replace("IPL 2026 Standings:", "").strip()
+        results_lines = db_context[idx:].replace("\n\nRecent Results:", "").strip()
+    elif db_context:
+        standings_lines = db_context.replace("IPL 2026 Standings:", "").strip()
+
+    # Intent-based routing
+    if any(k in msg_lower for k in ["lead", "top", "first", "number one", "best team", "who is #1", "which team"]):
+        if standings_lines:
+            top_line = standings_lines.split("\n")[0].strip()
+            return f"🏆 {top_line} is currently leading IPL 2026!\n\n📊 **Full standings:**\n{standings_lines}"
+
+    if any(k in msg_lower for k in ["point", "table", "standing", "rank", "position", "leaderboard"]):
+        if standings_lines:
+            return f"📊 **IPL 2026 Points Table:**\n{standings_lines}"
+
+    if any(k in msg_lower for k in ["result", "won", "win", "lost", "beat", "defeat", "last match", "recent"]):
+        if results_lines:
+            return f"🏆 **Recent IPL 2026 Results:**\n{results_lines}"
+        if standings_lines:
+            return f"📊 **IPL 2026 Standings:**\n{standings_lines}"
+
+    if any(k in msg_lower for k in ["squad", "playing xi", "roster", "who plays", "lineup"]):
+        return (
+            "🏏 Check the **Teams** section in the dashboard for full squads and playing XI! "
+            "I can also answer questions about IPL 2026 standings, results, and player statistics."
+        )
+
+    # Default: show all available DB data
+    parts = []
+    if standings_lines:
+        parts.append(f"📊 **IPL 2026 Standings:**\n{standings_lines}")
+    if results_lines:
+        parts.append(f"🏆 **Recent Results:**\n{results_lines}")
+
+    if not parts and web_context:
+        first = web_context.split("\n")[0].strip().lstrip("• ")
+        if ": " in first:
+            src, body = first.split(": ", 1)
+            parts.append(f"🌐 **{src}:**\n{body[:300]}")
+        else:
+            parts.append(f"🌐 {first[:300]}")
+
+    if parts:
+        return "\n\n".join(parts)
+    return "🏏 Ask me about IPL 2026 standings, recent results, player stats, or match predictions!"
+
 
 def chat_with_stumpmind(message: str, history: list[dict]) -> str:
     """AI chatbot — Gemini + DuckDuckGo grounding + live DB context."""
@@ -894,19 +968,9 @@ def chat_with_stumpmind(message: str, history: list[dict]) -> str:
     except Exception as e:
         print(f"[StumpMind] DB context fetch failed: {e}")
 
-    # ── No Gemini: return formatted DDG + DB data ────────────────────
+    # ── No Gemini: return smart targeted answer ──────────────────────
     if not _client:
-        parts = []
-        if db_context:
-            parts.append(f"📊 **Live IPL 2026 data:**\n{db_context}")
-        if web_context:
-            parts.append(f"🌐 **From the web:**\n{web_context[:500]}")
-        if parts:
-            return "\n\n".join(parts)
-        return (
-            "I couldn't find specific information about that right now. "
-            "Try asking about IPL 2026 standings, team squads, or recent match results!"
-        )
+        return _build_stumpmind_answer(message, db_context, web_context)
 
     # ── Gemini path: use DB + DDG as grounding context ───────────────
     try:
@@ -926,10 +990,7 @@ def chat_with_stumpmind(message: str, history: list[dict]) -> str:
             + context_section
         )
 
-        contents = [
-            {"role": "user", "parts": [{"text": system_prompt}]},
-            {"role": "model", "parts": [{"text": "I'm StumpMind, your IPL 2026 cricket expert! 🏏"}]},
-        ]
+        contents = []
         for m in history:
             role = "user" if m.get("role") == "user" else "model"
             contents.append({"role": role, "parts": [{"text": m.get("content", "")}]})
@@ -938,19 +999,15 @@ def chat_with_stumpmind(message: str, history: list[dict]) -> str:
         resp = _client.models.generate_content(
             model=_MODEL,
             contents=contents,
-            config=types.GenerateContentConfig(temperature=0.7),
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                temperature=0.7,
+            ),
         )
         return resp.text
     except Exception as e:
         print(f"[StumpMind] Gemini error: {e}")
-        parts = []
-        if db_context:
-            parts.append(db_context[:500])
-        if web_context:
-            parts.append(web_context[:400])
-        if parts:
-            return "Here's what I found:\n\n" + "\n\n".join(parts)
-        return "Sorry, I'm having trouble connecting right now. Please try again."
+        return _build_stumpmind_answer(message, db_context, web_context)
 
 
 # ── Team/Player Info ────────────────────────────────────────────────

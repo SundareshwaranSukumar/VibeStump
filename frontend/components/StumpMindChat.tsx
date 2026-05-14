@@ -18,6 +18,21 @@ export default function StumpMindChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Simple markdown renderer: handles **bold** and newlines safely
+  const renderMarkdown = (text: string) => {
+    return text.split('\n').map((line, i, arr) => {
+      const parts = line.split(/\*\*([^*]+)\*\*/g);
+      return (
+        <span key={i}>
+          {parts.map((part, j) =>
+            j % 2 === 1 ? <strong key={j}>{part}</strong> : part
+          )}
+          {i < arr.length - 1 && <br />}
+        </span>
+      );
+    });
+  };
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -120,7 +135,7 @@ export default function StumpMindChat() {
                       : 'bg-[rgba(var(--color-surface),0.6)] text-[rgb(var(--color-text))] rounded-bl-md'
                     }`}
                   >
-                    {m.content}
+                    {m.role === 'model' ? renderMarkdown(m.content) : m.content}
                   </div>
                   {m.role === 'user' && (
                     <div className="w-6 h-6 rounded-full bg-[rgba(var(--color-surface),0.6)] flex items-center justify-center flex-shrink-0 mt-0.5">

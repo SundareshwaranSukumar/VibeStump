@@ -131,8 +131,14 @@ async def api_highlights(limit: int = 6):
 
 @app.get("/api/insights")
 async def api_insights(match_id: str, limit: int = 10):
-    """Get AI-generated insights for a match."""
-    return get_insights(match_id, limit)
+    """Get AI-generated insights for a match. Supplements with general IPL news when few match-specific ones exist."""
+    specific = get_insights(match_id, limit)
+    if len(specific) < 5 and match_id != "ipl_news":
+        news = get_insights("ipl_news", limit - len(specific))
+        seen = {i["text"] for i in specific}
+        extra = [i for i in news if i["text"] not in seen]
+        return specific + extra
+    return specific
 
 
 @app.get("/api/meme")
