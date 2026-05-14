@@ -1,62 +1,42 @@
 /**
- * api.ts — Fetch helpers for the FastAPI backend.
- * All calls go through Next.js rewrites → backend.
+ * api.ts — Clean API helpers for the VibeStump frontend.
+ * All calls go through the Next.js proxy → FastAPI backend.
  */
 
-const BASE = '';  // Uses Next.js rewrite proxy
+const BASE = '';
 
 export async function fetchMatches() {
   const res = await fetch(`${BASE}/api/matches`);
   return res.json();
 }
 
-export async function fetchScore(ball: number, demo: boolean, matchId: string | null = null) {
-  const url = `${BASE}/api/score?ball=${ball}&demo=${demo}${matchId ? `&match_id=${encodeURIComponent(matchId)}` : ''}`;
-  const res = await fetch(url);
+export async function fetchLiveScore(matchId: string) {
+  const res = await fetch(`${BASE}/api/live-score?match_id=${encodeURIComponent(matchId)}`);
   return res.json();
 }
 
-export async function fetchCommentary(ball: number, demo: boolean, matchId: string | null = null) {
-  const url = `${BASE}/api/commentary?ball=${ball}&demo=${demo}${matchId ? `&match_id=${encodeURIComponent(matchId)}` : ''}`;
-  const res = await fetch(url);
+export async function fetchAllLiveScores() {
+  const res = await fetch(`${BASE}/api/live-score`);
   return res.json();
 }
 
-export async function fetchHighlights(query: string) {
-  const res = await fetch(`${BASE}/api/youtube?q=${encodeURIComponent(query)}`);
+export async function fetchScoreProgression(matchId: string) {
+  const res = await fetch(`${BASE}/api/score-progression?match_id=${encodeURIComponent(matchId)}`);
   return res.json();
 }
 
-export async function analyzeVibe(commentary: string) {
-  const res = await fetch(`${BASE}/api/analyze`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ commentary }),
-  });
+export async function fetchCommentary(matchId: string, limit: number = 30) {
+  const res = await fetch(`${BASE}/api/commentary?match_id=${encodeURIComponent(matchId)}&limit=${limit}`);
   return res.json();
 }
 
-export async function fetchHistorian(event_type: string, context: string) {
-  const res = await fetch(`${BASE}/api/historian`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ event_type, context }),
-  });
+export async function fetchHighlights(limit: number = 6) {
+  const res = await fetch(`${BASE}/api/highlights?limit=${limit}`);
   return res.json();
 }
 
-export async function fetchYouTube(query: string) {
-  const res = await fetch(`${BASE}/api/youtube?q=${encodeURIComponent(query)}`);
-  return res.json();
-}
-
-export async function diversionFood() {
-  const res = await fetch(`${BASE}/api/diversion/food`, { method: 'POST' });
-  return res.json();
-}
-
-export async function diversionNetflix() {
-  const res = await fetch(`${BASE}/api/diversion/netflix`, { method: 'POST' });
+export async function fetchInsights(matchId: string, limit: number = 10) {
+  const res = await fetch(`${BASE}/api/insights?match_id=${encodeURIComponent(matchId)}&limit=${limit}`);
   return res.json();
 }
 
@@ -65,7 +45,41 @@ export async function fetchPointsTable() {
   return res.json();
 }
 
-export async function fetchTeamInfo(teamCode: string) {
-  const res = await fetch(`${BASE}/api/team-info/${teamCode}`);
+export async function fetchUpcomingMatches() {
+  const res = await fetch(`${BASE}/api/upcoming-matches`);
+  return res.json();
+}
+
+export async function fetchTeams() {
+  const res = await fetch(`${BASE}/api/teams`);
+  return res.json();
+}
+
+export async function fetchTeamDetail(teamCode: string) {
+  const res = await fetch(`${BASE}/api/teams/${encodeURIComponent(teamCode)}`);
+  return res.json();
+}
+
+export async function fetchPlayerDetail(playerName: string) {
+  const res = await fetch(`${BASE}/api/players/${encodeURIComponent(playerName)}`);
+  return res.json();
+}
+
+export async function chatWithStumpMind(message: string, history: { role: string; content: string }[]) {
+  const res = await fetch(`${BASE}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, history }),
+  });
+  return res.json();
+}
+
+export async function fetchCompletedMatches() {
+  const res = await fetch(`${BASE}/api/completed-matches`);
+  return res.json();
+}
+
+export async function fetchMatchResult(matchId: string) {
+  const res = await fetch(`${BASE}/api/match-result/${encodeURIComponent(matchId)}`);
   return res.json();
 }

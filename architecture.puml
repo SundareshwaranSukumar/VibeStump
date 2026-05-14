@@ -1,78 +1,303 @@
 @startuml VibeStump_Architecture
-
 skinparam defaultFontName Arial
 skinparam roundcorner 12
-skinparam backgroundColor #FFFFFF
-skinparam defaultFontColor #333333
-skinparam packageBackgroundColor #F8F9FA
-skinparam nodeBackgroundColor #E8F0FE
-skinparam componentBackgroundColor #FFFFFF
-skinparam arrowColor #4285F4
+skinparam backgroundColor #1A1A2E
+skinparam defaultFontColor #E0E0E0
+skinparam packageBackgroundColor #16213E
+skinparam nodeBackgroundColor #0F3460
+skinparam componentBackgroundColor #1A1A2E
+skinparam componentBorderColor #4FC3F7
+skinparam arrowColor #4FC3F7
+skinparam rectangleBorderColor #4FC3F7
+skinparam packageBorderColor #4FC3F7
+skinparam actorBorderColor #4FC3F7
+skinparam databaseBorderColor #4FC3F7
+skinparam cloudBorderColor #EF4444
+skinparam noteBorderColor #FFB74D
+skinparam noteBackgroundColor #2D1B00
+skinparam titleFontColor #FFFFFF
+skinparam titleFontSize 18
 
-title VibeStump - Agentic Premier League Architecture
+title VibeStump - Agentic Premier League
+Real-Time IPL Dashboard v3.0
 
-actor "Fan\n(Browser)" as Fan
+actor "IPL Fan" as Fan
 
-rectangle "Google Cloud Run" {
-
-  node "Frontend Service\n(Next.js + Tailwind)" as FE {
-    [Zustand Store] as Store
-    [Framer Motion] as Animations
-    [React-Player] as Background
-    [API Proxy] as Proxy
+rectangle "Frontend - Next.js 15 - Port 3000" as FE {
+  package "Root Layout" {
+    [ClientProviders] as CP
+    note right of CP
+      Mounts StumpMindChat globally.
+      Chatbot floats on home,
+      team, and player pages.
+    end note
   }
-
-  node "Backend Service\n(FastAPI + Uvicorn)" as BE {
-    
-    package "Agent Layer" {
-      [Scout Agent] as Scout
-      [Persona Agent] as Persona
-      [Historian Agent] as Hist
-      [Oracle Agent] as Oracle
-    }
-
-    package "Database Layer" {
-      database "SQLite\nvibestump.db" as DB
-    }
-    
-    [IPL Points Table] as Points
-    [Dynamic Match Simulator] as Sim
+  package "Navigation" {
+    [Header] as HDR
+    [MatchSelector] as MS
+    note right of MS
+      Two dropdowns:
+      Today    - status = LIVE
+      Previous - status = COMPLETED
+    end note
+  }
+  package "Dashboard Header" {
+    [Scoreboard] as SCB
+    [TeamsGrid] as TG
+    note right of TG
+      Outer glass card wraps inner
+      frosted card. Shows all 10
+      IPL team badges + full names.
+    end note
+  }
+  package "Left Column" {
+    [LiveVideoPlayer] as LVP
+    [RunsGraph] as RG
+    note right of RG
+      Dual-innings line chart.
+      batting_team field groups data.
+      MI solid, CSK dashed line.
+      Recharts Legend with team colors.
+    end note
+    [Commentary Feed] as CF
+    [Highlights] as HL
+    note right of HL
+      Card-based UI, no iframe embed.
+      Team-colored gradient cards.
+      External YouTube link button.
+      onError hides broken images.
+    end note
+  }
+  package "Right Column" {
+    [AgentCommentary] as AC
+    [AudienceMood] as AM
+    note right of AM
+      Reads activeEvent from Zustand.
+      WICKET  - red    92pct energy bar
+      SIX     - purple 100pct energy bar
+      FOUR    - green  78pct energy bar
+      Default - indigo 42pct energy bar
+      Polls /api/meme for Tenor GIF.
+      Offline: bouncing emoji fallback.
+      Framer Motion float particles.
+    end note
+    [PointsTable] as PT
+    [UpcomingMatches] as UM
+  }
+  package "Page Routes" {
+    [Team Detail Page] as TDP
+    note right of TDP
+      Playing XI with role badges:
+      BAT, WK, ALL, BOWL.
+      Captain C and WK markers.
+      Bench substitutes section.
+      Upcoming and recent results.
+    end note
+    [Player Profile Page] as PPP
+    [API Proxy Route] as APR
+    note right of APR
+      /api/path forwards requests
+      to FastAPI backend.
+    end note
+  }
+  package "Global Chatbot" {
+    [StumpMindChat] as SMC
+  }
+  package "Shared State" {
+    [Zustand Store] as ZS
+    note right of ZS
+      selectedMatchId, score,
+      commentary, scoreProgression,
+      highlights, insights,
+      activeEvent, activeEventGlow,
+      matches, theme
+    end note
+    [api.ts HTTP helpers] as APITS
+    [SoundManager] as SND
+    note right of SND
+      WICKET, SIX, FOUR audio cues.
+      Initialized on first user click.
+    end note
+    [Next.js API Proxy] as NP
   }
 }
 
-cloud "External APIs" {
-  [ESPNcricinfo\nRSS Feed] as RSS
-  [Google Gemini\n2.5 Flash] as Gemini
-  [Google Search API\n(Gemini Tool)] as GSearch
-  [Tenor API] as Tenor
-  [YouTube\nData API v3] as YT
+rectangle "Backend - FastAPI - Port 8000" as BE {
+  package "seed.py Boot Seeder" {
+    [run_seed at lifespan startup] as SEED
+    note right of SEED
+      Seeds DB on first boot:
+      2 LIVE matches (CSK-MI, RCB-KKR)
+      3 COMPLETED (SRH-GT, MI-DC, RR-PBKS)
+      MI first innings + CSK second innings
+      10-team points table with NRR
+      5 upcoming fixtures (May 15-18)
+      40+ commentary events seeded
+      Pre-written AI insights per match
+    end note
+  }
+  package "5 AI Agents 10s cycle" {
+    [ScoreAgent] as A1
+    note right of A1
+      1. Try ESPN Cricinfo RSS feed.
+      2. FAIL - LiveSimulator engine.
+         Weighted random ball outcomes.
+         Advances all LIVE matches.
+         Stops automatically at 20 overs.
+    end note
+    [CommentaryAgent] as A2
+    note right of A2
+      Detects score delta per cycle.
+      Templates: WICKET, SIX, FOUR, RUNS.
+      Writes event_type to commentary table.
+    end note
+    [InsightsAgent] as A3
+    note right of A3
+      1. Try Gemini 2.5 Flash API.
+      2. FAIL - offline insights library
+         (8 pre-written cricket facts).
+    end note
+    [MediaAgent] as A4
+    note right of A4
+      1. Try YouTube Data API v3.
+      2. FAIL - DEMO_HIGHLIGHTS (4 cards).
+      Frontend: card UI, no iframe embed.
+    end note
+    [MemeAgent] as A5
+    note right of A5
+      1. Try Tenor API v2 for GIF URL.
+      2. FAIL - null stored in DB.
+      AudienceMood shows emoji fallback.
+    end note
+  }
+  package "REST API Endpoints" {
+    [GET matches] as EP1
+    [GET live-score] as EP2
+    [GET score-progression] as EP3
+    [GET commentary] as EP4
+    [GET highlights] as EP5
+    [GET insights] as EP6
+    [GET meme] as EP7
+    [GET teams list] as EP8
+    [GET team by code] as EP9
+    [GET player by name] as EP10
+    [GET points-table] as EP11
+    [GET upcoming-matches] as EP12
+    [POST chat StumpMind] as EP13
+  }
+  package "SQLite DB WAL mode" {
+    database "vibestump.db" as DB {
+      [matches table] as T1
+      [live_scores table] as T2
+      [score_progression with batting_team] as T3
+      note right of T3
+        batting_team column added via
+        ALTER TABLE migration. Stores
+        both innings under same match_id.
+      end note
+      [commentary with event_type] as T4
+      [highlights table] as T5
+      [insights table] as T6
+      [memes table] as T7
+      [points_table] as T8
+      [upcoming_matches table] as T9
+    }
+  }
+  package "tools.py Static Data" {
+    [IPL_TEAMS metadata] as TR1
+    [SQUAD_DATA Playing XI and bench] as TR2
+    note right of TR2
+      All 10 IPL teams. Per player:
+      name, role (BAT, WK, ALL, BOWL),
+      captain flag, wicketkeeper flag.
+      Fully offline, no API needed.
+    end note
+    [get_squad function] as TR3
+  }
 }
 
-' -- Data Flow --
-Fan --> FE : HTTPS\n(polling every 8-30s)
-FE --> Proxy : Next.js API Routes
-Proxy --> BE : REST API
+cloud "External APIs - ALL OPTIONAL" as EXT {
+  [ESPN Cricinfo RSS] as RSS
+  [Google Gemini 2.5 Flash] as GEM
+  [YouTube Data API v3] as YT
+  [Tenor API v2] as TNR
+}
 
-BE --> Scout
-Scout --> RSS : httpx async
-Scout ..> Sim : fallback (no live match)
-Sim --> Gemini : generates match events
-Scout --> DB : stores match data
+note bottom of EXT
+  OFFLINE-FIRST architecture.
+  Zscaler SSL inspection blocks all
+  four APIs in corporate environments.
+  Every agent has a complete fallback.
+  App never shows a blank screen.
+end note
 
-BE --> Persona
-Persona --> Gemini : structured JSON schema
-Persona --> Tenor : fetch dynamic meme
+package "deploy.sh Zscaler-safe" {
+  [deploy.sh local] as DSH1
+  note right of DSH1
+    pip install --trusted-host flags
+    bypass Zscaler SSL inspection.
+    npm install --prefer-offline
+    uses npm cache first.
+    Calls init_db() and run_seed()
+    to populate all demo data.
+  end note
+  [deploy.sh start] as DSH2
+  note right of DSH2
+    Backend via nohup env GEMINI_API_KEY
+    uvicorn main:app on port 8000.
+    Frontend via node .next/standalone/server.js
+    NOT next start (standalone output mode).
+  end note
+}
 
-BE --> Hist
-Hist --> Gemini : historical context
+Fan --> HDR
+Fan --> MS  : select match
+Fan --> AM  : view crowd mood
+Fan --> TDP : view team squad
+Fan --> SMC : ask cricket question
 
-BE --> Oracle
-Oracle --> Gemini : Oracle Predictions
-Oracle --> GSearch : Live stats & chat
+MS   --> ZS  : setSelectedMatchId
+ZS   --> APITS
+APITS --> NP
 
-BE --> YT : search highlights
+NP --> EP2  : poll 5s
+NP --> EP3  : poll 5s
+NP --> EP4  : poll 5s
+NP --> EP1  : poll 30s
+NP --> EP5  : poll 120s
 
-Store --> Animations : triggers UI updates
-Store --> Background : dynamic theme
+EP4 --> ZS  : set activeEvent
+ZS  --> AM  : activeEvent triggers mood
+ZS  --> SCB : activeEventGlow animates
+ZS  --> SND : play audio cue
+
+A1  --> RSS  : try live scores
+A3  --> GEM  : try AI insights
+A4  --> YT   : try YouTube data
+A5  --> TNR  : try Tenor GIF
+EP13 --> GEM : try chat response
+
+A1  ..> DB   : fallback LiveSimulator
+A3  ..> DB   : fallback offline insights
+A4  ..> DB   : fallback DEMO_HIGHLIGHTS
+A5  ..> DB   : fallback null stored
+GEM ..> EP13 : fallback offline message
+
+A2  --> DB
+A1  --> DB
+
+DB --> EP1
+DB --> EP2
+DB --> EP3
+DB --> EP4
+DB --> EP5
+DB --> EP6
+DB --> EP7
+DB --> EP8
+DB --> EP11
+DB --> EP12
+TR2 --> EP9
+
+SEED --> DB
 
 @enduml

@@ -1,185 +1,205 @@
 """
-main.py — FastAPI backend for VibeStump APL.
+main.py — FastAPI backend for VibeStump: Agentic Premier League.
 
-Endpoints:
-  GET  /api/score          — Live scorecard from Scout Agent
-  GET  /api/commentary     — Latest commentary line
-  POST /api/analyze        — Psychologist Agent analysis
-  POST /api/historian      — Historian Agent deep-dive
-  GET  /api/youtube        — YouTube highlight search
-  POST /api/diversion/food — Mock Swiggy API
-  POST /api/diversion/netflix — Mock Netflix API
+Clean architecture with background agent tasks.
+All data flows: Agents → DB → API → Frontend.
 """
 
-import os
+import asyncio
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Query
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from dotenv import load_dotenv
 
-load_dotenv()
-
-from agents import analyze_commentary, generate_historical_insight
-from tools import (
-    ScoutAgent,
-    fetch_youtube_highlights,
-    mock_food_delivery_api,
-    mock_netflix_api,
+from database import (
+    get_matches,
+    get_live_score,
+    get_all_live_scores,
+    get_score_progression,
+    get_commentary,
+    get_highlights,
+    get_insights,
+    get_latest_meme,
+    get_points_table,
+    get_completed_matches,
+    get_match_result,
+    get_conn,
 )
+from agents import (
+    run_agent_loop,
+    stop_agents,
+    chat_with_stumpmind,
+    get_team_details_ai,
+    get_player_details_ai,
+)
+from tools import IPL_TEAMS, get_team_info, get_squad
+from seed import run_seed
 
 
-# ── Lifespan ─────────────────────────────────────────────────────────
+# ── Lifespan ────────────────────────────────────────────────────────
+
+_agent_task = None
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize and teardown resources."""
-    print("[VibeStump] Backend starting — agents online.")
+    global _agent_task
+    print("[VibeStump] Backend starting — seeding data + initializing agents...")
+    run_seed()  # Seed demo data if DB is empty
+    _agent_task = asyncio.create_task(run_agent_loop())
     yield
-    print("[VibeStump] Backend shutting down.")
+    print("[VibeStump] Shutting down agents...")
+    stop_agents()
+    if _agent_task:
+        _agent_task.cancel()
+        try:
+            await _agent_task
+        except asyncio.CancelledError:
+            pass
+    print("[VibeStump] Backend stopped.")
 
 
-# ── App ──────────────────────────────────────────────────────────────
+# ── App ─────────────────────────────────────────────────────────────
+
 app = FastAPI(
     title="VibeStump API",
     description="Agentic Premier League Backend",
-    version="2.0.0",
+    version="3.0.0",
     lifespan=lifespan,
 )
 
-# CORS — allow the Next.js frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://*.run.app",  # Cloud Run frontend
-        "*",
+        "https://*.run.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-scout = ScoutAgent()
 
-
-# ── Request / Response Models ────────────────────────────────────────
-class AnalyzeRequest(BaseModel):
-    commentary: str
-    team: str = "RCB"
-    batting: str = "Home Team"
-    bowling: str = "Away Team"
-
-class HistorianRequest(BaseModel):
-    event_type: str
-    context: str
-    match_title: str = "IPL Match"
-
-
-# ── Routes ───────────────────────────────────────────────────────────
-@app.get("/")
-async def root():
-    return {"status": "online", "service": "vibestump-backend"}
-
-
-@app.get("/api/matches")
-async def get_matches():
-    """Returns all available internet matches."""
-    return await scout.get_all_matches()
-
-
-@app.get("/api/score")
-async def get_score(ball: int = 0, demo: bool = True, match_id: str = None):
-    """Returns the live scorecard."""
-    return scout.get_scorecard(ball, demo_mode=demo, match_id=match_id)
-
-
-@app.get("/api/commentary")
-async def get_commentary(ball: int = 0, demo: bool = True, match_id: str = None):
-    """Returns the commentary for a specific ball."""
-    text = await scout.get_commentary(ball, demo_mode=demo, match_id=match_id)
-    return {"ball": ball, "commentary": text}
-
-
-@app.post("/api/analyze")
-async def analyze(req: AnalyzeRequest):
-    """Runs the Psychologist Agent on commentary."""
-    result = analyze_commentary(
-        req.commentary, 
-        team=req.team, 
-        batting=req.batting, 
-        bowling=req.bowling
-    )
-    
-    # Dynamically fetch meme using Tenor API
-    from tools import fetch_meme
-    meme_url = await fetch_meme(result.fallback_mood, result.meme_search_query)
-    
-    data = result.model_dump()
-    data["meme_url"] = meme_url
-    return data
-
-
-@app.post("/api/historian")
-async def historian(req: HistorianRequest):
-    """Runs the Historian Agent for a critical event."""
-    insight = generate_historical_insight(req.event_type, req.context, match_title=req.match_title)
-    return {"insight": insight}
-
-
-@app.get("/api/youtube")
-async def youtube(q: str = Query("IPL highlights 2026"), max_results: int = 3):
-    """Searches YouTube Data API v3."""
-    videos = fetch_youtube_highlights(q, max_results)
-    return {"videos": videos}
-
-
-@app.post("/api/diversion/food")
-async def diversion_food():
-    """Mock Swiggy comfort-food API."""
-    return {"message": mock_food_delivery_api()}
-
-
-@app.post("/api/diversion/netflix")
-async def diversion_netflix():
-    """Mock Netflix streaming API."""
-    return {"message": mock_netflix_api()}
-
-@app.get("/api/points-table")
-async def points_table():
-    """Returns the IPL Points Table."""
-    from tools import get_points_table
-    return await get_points_table()
-
-
-@app.get("/api/team-info/{team_code}")
-async def team_info(team_code: str):
-    """Returns detailed info for a specific team."""
-    from tools import get_team_info
-    return get_team_info(team_code)
-
-
-class OracleRequest(BaseModel):
-    commentary: str
-    team: str
-
-
-@app.post("/api/oracle")
-async def oracle(req: OracleRequest):
-    """Runs the Oracle agent for gamification."""
-    from agents import analyze_oracle
-    result = analyze_oracle(req.commentary, req.team)
-    return result.model_dump()
-
+# ── Request Models ──────────────────────────────────────────────────
 
 class ChatRequest(BaseModel):
     message: str
-    history: list
+    history: list[dict] = []
+
+
+# ── Routes ──────────────────────────────────────────────────────────
+
+@app.get("/")
+async def root():
+    return {"status": "online", "service": "vibestump-api", "version": "3.0.0"}
+
+
+@app.get("/api/matches")
+async def api_matches():
+    """List all tracked matches."""
+    return get_matches()
+
+
+@app.get("/api/live-score")
+async def api_live_score(match_id: str = ""):
+    """Get live score for a specific match, or all scores."""
+    if match_id:
+        score = get_live_score(match_id)
+        return score if score else {"error": "Match not found"}
+    return get_all_live_scores()
+
+
+@app.get("/api/score-progression")
+async def api_score_progression(match_id: str):
+    """Get score progression (runs vs overs) for graphing."""
+    return get_score_progression(match_id)
+
+
+@app.get("/api/commentary")
+async def api_commentary(match_id: str, limit: int = 30):
+    """Get recent commentary for a match."""
+    return get_commentary(match_id, limit)
+
+
+@app.get("/api/highlights")
+async def api_highlights(limit: int = 6):
+    """Get YouTube highlights."""
+    return get_highlights(limit)
+
+
+@app.get("/api/insights")
+async def api_insights(match_id: str, limit: int = 10):
+    """Get AI-generated insights for a match."""
+    return get_insights(match_id, limit)
+
+
+@app.get("/api/meme")
+async def api_meme(event_type: str = ""):
+    """Get latest meme for an event type."""
+    url = get_latest_meme(event_type)
+    return {"url": url} if url else {"url": None}
+
+
+@app.get("/api/points-table")
+async def api_points_table():
+    """Get IPL points table."""
+    return get_points_table()
+
+
+@app.get("/api/upcoming-matches")
+async def api_upcoming_matches():
+    """Get upcoming scheduled matches."""
+    conn = get_conn()
+    try:
+        rows = conn.execute(
+            "SELECT * FROM upcoming_matches ORDER BY date, time"
+        ).fetchall()
+        return [dict(r) for r in rows]
+    except Exception:
+        return []
+
+
+@app.get("/api/teams")
+async def api_teams():
+    """List all IPL teams with metadata."""
+    return [
+        {"code": code, **{k: v for k, v in info.items()}}
+        for code, info in IPL_TEAMS.items()
+    ]
+
+
+@app.get("/api/teams/{team_code}")
+async def api_team_detail(team_code: str):
+    """Get detailed info for a specific team (uses Gemini for live data)."""
+    code = team_code.upper()
+    meta = get_team_info(code)
+    details = get_team_details_ai(meta.get("name", code))
+    squad = get_squad(code)
+    return {**meta, **details, **squad}
+
+
+@app.get("/api/players/{player_name}")
+async def api_player_detail(player_name: str):
+    """Get player stats (uses Gemini with google_search)."""
+    return get_player_details_ai(player_name)
 
 
 @app.post("/api/chat")
-async def chat(req: ChatRequest):
-    """Runs the Search-Enabled Chatbot."""
-    from agents import chat_with_oracle
-    resp_text = chat_with_oracle(req.message, req.history)
-    return {"reply": resp_text}
+async def api_chat(req: ChatRequest):
+    """StumpMind AI chatbot."""
+    reply = chat_with_stumpmind(req.message, req.history)
+    return {"reply": reply}
 
+
+@app.get("/api/completed-matches")
+async def api_completed_matches():
+    """Get all completed matches with rich result details (scorecard, performers)."""
+    return get_completed_matches()
+
+
+@app.get("/api/match-result/{match_id}")
+async def api_match_result(match_id: str):
+    """Get detailed result data for a specific completed match."""
+    result = get_match_result(match_id)
+    return result if result else {"error": "Match result not found"}
