@@ -244,7 +244,69 @@ def upsert_live_score(match_id: str, data: dict):
 def get_live_score(match_id: str) -> Optional[dict]:
     conn = get_conn()
     row = conn.execute("SELECT * FROM live_scores WHERE match_id = ?", (match_id,)).fetchone()
-    return dict(row) if row else None
+    if row:
+        return dict(row)
+
+    # Fallback: synthesize from match_results so completed matches show a scorecard
+    result = conn.execute("SELECT * FROM match_results WHERE match_id = ?", (match_id,)).fetchone()
+    if not result:
+        return None
+    r = dict(result)
+
+    def _parse(s: str):
+        try:
+            parts = s.split("/")
+            return int(parts[0]), int(parts[1]) if len(parts) > 1 else 10
+        except Exception:
+            return 0, 0
+
+    t1_r, t1_w = _parse(r.get("team1_score", "0/0"))
+    t2_r, t2_w = _parse(r.get("team2_score", "0/0"))
+    team1_code = r.get("team1_code", "")
+    team2_code = r.get("team2_code", "")
+    team1_name = r.get("team1_name", team1_code)
+    team2_name = r.get("team2_name", team2_code)
+    winner_code = r.get("winner", "")
+
+    # raw_title format understood by Scoreboard's parseInnings():
+    # "PBKS 200/8 v MI 205/4"
+    raw_title = (
+        f"{team1_code} {r.get('team1_score', '?')} v "
+        f"{team2_code} {r.get('team2_score', '?')}"
+    )
+
+    # Highlight winner as "batting_team" so Scoreboard shows them prominently
+    if winner_code.upper() == team2_code.upper():
+        batting_team = team2_name
+        bowling_team = team1_name
+        runs, wickets = t2_r, t2_w
+        overs = r.get("team2_overs", "20.0") or "20.0"
+    else:
+        batting_team = team1_name
+        bowling_team = team2_name
+        runs, wickets = t1_r, t1_w
+        overs = r.get("team1_overs", "20.0") or "20.0"
+
+    status = r.get("status", "")
+    if not status and winner_code:
+        winner_full = team1_name if winner_code.upper() == team1_code.upper() else team2_name
+        margin = r.get("margin", "")
+        status = f"{winner_full} won by {margin}" if margin else f"{winner_full} won"
+
+    return {
+        "match_id": match_id,
+        "batting_team": batting_team,
+        "bowling_team": bowling_team,
+        "runs": runs,
+        "wickets": wickets,
+        "overs": overs,
+        "target": "-",
+        "run_rate": 0.0,
+        "required_rate": 0.0,
+        "match_status": status or "COMPLETED",
+        "raw_title": raw_title,
+        "updated_at": r.get("updated_at", ""),
+    }
 
 
 def get_all_live_scores() -> list[dict]:

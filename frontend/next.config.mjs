@@ -10,16 +10,10 @@ const nextConfig = {
       { protocol: 'https', hostname: 'cdn-icons-png.flaticon.com' },
     ],
   },
-  webpack: (config, { isServer }) => {
-    // Reduce file watcher limits in dev mode to prevent EMFILE errors
-    if (!isServer) {
-      config.watchOptions = {
-        aggregateTimeout: 300,
-        poll: 1000,
-        ignored: ['**/node_modules', '**/.next', '**/dist'],
-      };
-    }
-    return config;
+  onDemandEntries: {
+    // Reduce memory usage in dev mode to prevent EMFILE errors
+    maxInactiveAge: 60 * 1000,
+    pagesBufferLength: 5,
   },
 };
 

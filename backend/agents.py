@@ -978,7 +978,25 @@ def _build_stumpmind_answer(message: str, db_context: str, web_context: str) -> 
     if any(k in msg_lower for k in ["squad", "playing xi", "roster", "lineup", "team squad"]):
         return "🏏 Visit the **Teams** tab in the dashboard for full squad lists and player details!"
 
-    # ── Default: combine all available data ─────────────────────────
+    # ── Default: use web context for general/player questions ──────────
+    # For unknown queries (player info, rules, history, etc.) use DDG results
+    if web_context:
+        lines = [ln.strip().lstrip("• ") for ln in web_context.split("\n")
+                 if ln.strip() and len(ln.strip()) > 30]
+        for line in lines:
+            if ": " in line:
+                src, body = line.split(": ", 1)
+                return (
+                    f"🌐 **{src}:**\n{body[:400]}\n\n"
+                    "_💡 Ask me about IPL 2026 standings, results, or upcoming matches!_"
+                )
+        if lines:
+            return (
+                f"🌐 {lines[0][:400]}\n\n"
+                "_💡 Ask me about IPL 2026 standings, results, or upcoming matches!_"
+            )
+
+    # Last resort: combine all available DB data
     parts = []
     if standings_lines:
         parts.append(f"📊 **IPL 2026 Standings:**\n{standings_lines}")
@@ -986,14 +1004,6 @@ def _build_stumpmind_answer(message: str, db_context: str, web_context: str) -> 
         parts.append(f"🏆 **Recent Results:**\n{results_lines}")
     if upcoming_lines:
         parts.append(f"📅 **Upcoming:**\n{upcoming_lines}")
-
-    if not parts and web_context:
-        first_line = web_context.split("\n")[0].strip().lstrip("• ")
-        if ": " in first_line:
-            src, body = first_line.split(": ", 1)
-            parts.append(f"🌐 **{src}:**\n{body[:300]}")
-        else:
-            parts.append(f"🌐 {first_line[:300]}")
 
     if parts:
         return "\n\n".join(parts)

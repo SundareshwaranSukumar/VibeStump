@@ -2,7 +2,7 @@
 
 import {
   fetchCommentary, fetchHighlights, fetchInsights,
-  fetchLiveScore, fetchMatches, fetchScoreProgression,
+  fetchLiveScore, fetchMatchResult, fetchMatches, fetchScoreProgression,
 } from '@/lib/api';
 import { soundManager } from '@/lib/SoundManager';
 import { getTeamGlow, useVibeStore } from '@/lib/store';
@@ -14,6 +14,7 @@ import Commentary from '@/components/Commentary';
 import Header from '@/components/Header';
 import Highlights from '@/components/Highlights';
 import Jumbotron, { type JumbotronEvent } from '@/components/Jumbotron';
+import MatchResultCard, { type MatchResult } from '@/components/MatchResultCard';
 import MatchSelector from '@/components/MatchSelector';
 import PointsTable from '@/components/PointsTable';
 import PreviousMatches from '@/components/PreviousMatches';
@@ -61,9 +62,12 @@ export default function Home() {
 
   const {
     selectedMatchId, setSelectedMatchId,
+    matches,
     setMatches, setScore, setCommentary, setScoreProgression,
     setHighlights, setInsights, triggerEvent, activeEvent,
   } = useVibeStore();
+
+  const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
 
   const prevCommentaryRef = useRef<string>('');
   const soundInitRef = useRef(false);
@@ -154,6 +158,19 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Fetch detailed result card when a completed match is selected
+  useEffect(() => {
+    if (!selectedMatchId) { setMatchResult(null); return; }
+    const match = matches.find((m) => m.id === selectedMatchId);
+    if (match?.status === 'COMPLETED') {
+      fetchMatchResult(selectedMatchId)
+        .then((data) => { if (data && !data.error) setMatchResult(data as MatchResult); else setMatchResult(null); })
+        .catch(() => setMatchResult(null));
+    } else {
+      setMatchResult(null);
+    }
+  }, [selectedMatchId, matches]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div className="min-h-screen flex flex-col bg-[rgb(var(--color-bg))]">
 
@@ -198,24 +215,37 @@ export default function Home() {
         {activeTab === 'live' && (
           <div>
             <MatchSelector />
-            <Scoreboard />
-            <div className="max-w-[1600px] mx-auto px-4 sm:px-6 pb-10 pt-2">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                <div className="lg:col-span-2 flex flex-col gap-5">
-                  <RunsGraph />
-                  <Commentary />
+            {matchResult ? (
+              <>
+                <div className="max-w-[1600px] mx-auto px-4 sm:px-6 pt-4 pb-2">
+                  <MatchResultCard match={matchResult} />
+                </div>
+                <div className="max-w-[1600px] mx-auto px-4 sm:px-6 pb-10 pt-2">
                   <Highlights />
                 </div>
-                <div className="flex flex-col gap-5">
-                  <Jumbotron
-                    currentEvent={jumbotronEvent}
-                    isTimeout={isTimeout}
-                    onTimeoutEnd={() => setIsTimeout(false)}
-                  />
-                  <AgentCommentary />
+              </>
+            ) : (
+              <>
+                <Scoreboard />
+                <div className="max-w-[1600px] mx-auto px-4 sm:px-6 pb-10 pt-2">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                    <div className="lg:col-span-2 flex flex-col gap-5">
+                      <RunsGraph />
+                      <Commentary />
+                      <Highlights />
+                    </div>
+                    <div className="flex flex-col gap-5">
+                      <Jumbotron
+                        currentEvent={jumbotronEvent}
+                        isTimeout={isTimeout}
+                        onTimeoutEnd={() => setIsTimeout(false)}
+                      />
+                      <AgentCommentary />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         )}
 
