@@ -4,6 +4,7 @@ Thread-safe, WAL-mode, stores all match/score/commentary data.
 """
 
 import sqlite3
+import re
 import threading
 from pathlib import Path
 from typing import Optional
@@ -138,6 +139,53 @@ def init_db():
 
 
 # ── Matches ─────────────────────────────────────────────────────────
+
+# Full IPL team name fragments — safe as substrings (long, unambiguous)
+_IPL_TITLE_KEYWORDS = [
+    "royal challengers", "chennai super kings", "mumbai indians",
+    "kolkata knight riders", "sunrisers hyderabad", "delhi capitals",
+    "rajasthan royals", "punjab kings", "gujarat titans", "lucknow super giants",
+    "ipl", "indian premier league",
+    # Cricbuzz seeded IDs always start with "cb_"
+]
+_IPL_SHORT_CODES_RE = re.compile(
+    r'\b(RCB|CSK|MI|KKR|SRH|GT|DC|LSG|PBKS|RR)\b', re.IGNORECASE
+)
+
+
+def _is_ipl_title(title: str, match_id: str = "") -> bool:
+    """Return True if the match title/ID belongs to an IPL match."""
+    # Seeded Cricbuzz matches always have IDs starting with "cb_"
+    if match_id.startswith("cb_") or match_id.startswith("upcoming_"):
+        return True
+    title_lower = title.lower()
+    if any(kw in title_lower for kw in _IPL_TITLE_KEYWORDS):
+        return True
+    if _IPL_SHORT_CODES_RE.search(title):
+        return True
+    return False
+
+
+def purge_non_ipl_matches() -> int:
+    """Remove any match from the DB that is not an IPL match.
+    Returns the number of matches deleted."""
+    import re as _re
+    conn = get_conn()
+    rows = conn.execute("SELECT id, title FROM matches").fetchall()
+    to_delete = [r["id"] for r in rows if not _is_ipl_title(r["title"], r["id"])]
+    if not to_delete:
+        return 0
+    with _lock:
+        for match_id in to_delete:
+            conn.execute("DELETE FROM matches WHERE id = ?", (match_id,))
+            conn.execute("DELETE FROM live_scores WHERE match_id = ?", (match_id,))
+            conn.execute("DELETE FROM score_progression WHERE match_id = ?", (match_id,))
+            conn.execute("DELETE FROM commentary WHERE match_id = ?", (match_id,))
+            conn.execute("DELETE FROM insights WHERE match_id = ?", (match_id,))
+        conn.commit()
+    print(f"[DB] Purged {len(to_delete)} non-IPL match(es): {to_delete}")
+    return len(to_delete)
+
 
 def upsert_match(match_id: str, title: str, status: str, team1: str = "", team2: str = ""):
     conn = get_conn()

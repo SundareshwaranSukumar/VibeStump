@@ -40,17 +40,17 @@ def run_seed(force: bool = False):
 
 
 def _seed_points_table(conn):
-    """Seed IPL 2026 points table with verified Cricbuzz data."""
+    """Seed IPL 2026 points table with verified Cricbuzz data (after 58th Match)."""
     table = [
         ("RCB",  12, 8, 4, 0, 16, "+1.053"),
         ("GT",   12, 8, 4, 0, 16, "+0.551"),
         ("SRH",  12, 7, 5, 0, 14, "+0.331"),
-        ("PBKS", 11, 6, 4, 1, 13, "+0.428"),
+        ("PBKS", 12, 6, 5, 1, 13, "+0.380"),
         ("CSK",  11, 6, 5, 0, 12, "+0.232"),
         ("RR",   11, 6, 5, 0, 12, "+0.054"),
         ("DC",   12, 5, 7, 0, 10, "-0.285"),
         ("KKR",  11, 4, 6, 1,  9, "-0.342"),
-        ("MI",   11, 3, 8, 0,  6, "-0.683"),
+        ("MI",   12, 4, 8, 0,  8, "-0.450"),
         ("LSG",  11, 3, 8, 0,  6, "-0.912"),
     ]
     with _lock:
@@ -66,8 +66,19 @@ def _seed_points_table(conn):
 
 
 def _seed_recent_results(conn):
-    """Seed recent IPL 2026 match results (Matches 55-57)."""
+    """Seed recent IPL 2026 match results (Matches 55-58)."""
     results = [
+        {
+            "id": "cb_152141",
+            "title": "Punjab Kings vs Mumbai Indians — IPL 2026 58th Match",
+            "team1": "PBKS", "team2": "MI", "status": "COMPLETED",
+            "winner": "MI", "margin": "6 wickets",
+            "team1_score": "200/8", "team1_overs": "20.0",
+            "team2_score": "205/4", "team2_overs": "19.3",
+            "venue": "Himachal Pradesh Cricket Association Stadium, Dharamsala",
+            "match_no": "58th Match",
+            "full_status": "Mumbai Indians won by 6 wickets",
+        },
         {
             "id": "cb_152130",
             "title": "Kolkata Knight Riders vs Royal Challengers Bengaluru — IPL 2026 57th Match",
@@ -104,9 +115,10 @@ def _seed_recent_results(conn):
     ]
 
     with _lock:
-        # Clear only stale/fabricated result rows (IDs that don't match real Cricbuzz match IDs)
+        # Clear only stale/non-IPL result rows — keep real Cricbuzz IPL match IDs
         conn.execute(
-            "DELETE FROM match_results WHERE match_id NOT IN ('cb_152130','cb_152119','cb_152108')"
+            "DELETE FROM match_results WHERE match_id NOT IN "
+            "('cb_152141','cb_152130','cb_152119','cb_152108')"
         )
         conn.commit()
 

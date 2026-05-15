@@ -82,15 +82,38 @@ class ScoreAgent:
     """Fetches REAL live IPL scores from RSS and DuckDuckGo.
     NO simulation. Only stores real data from web sources."""
 
-    IPL_KEYWORDS = list(IPL_TEAMS.keys()) + [
+    # Full IPL team names — safe to use as substrings (long, unambiguous)
+    _IPL_FULL_NAMES = [
         "royal challengers", "chennai super kings", "mumbai indians",
         "kolkata knight riders", "sunrisers hyderabad", "delhi capitals",
         "rajasthan royals", "punjab kings", "gujarat titans", "lucknow super giants",
-        "ipl", "indian premier league",
+        "indian premier league",
     ]
+    # Short codes MUST use word boundaries — "MI" would match "Middlesex",
+    # "RR" would match "Surrey", "GT" could match other teams, etc.
+    _IPL_SHORT_CODES = list(IPL_TEAMS.keys())  # RCB, CSK, MI, KKR, SRH, GT, DC, LSG, PBKS, RR
+
+    @classmethod
+    def _is_ipl_match(cls, title: str) -> bool:
+        """Strict IPL-only filter using word boundaries for short codes.
+        Prevents county cricket teams from matching: 'MI' ≠ 'Middlesex',
+        'RR' ≠ 'Surrey', 'DC' ≠ 'Durham County', etc.
+        """
+        title_lower = title.lower()
+        # Full names are safe — too long to false-positive
+        if any(kw in title_lower for kw in cls._IPL_FULL_NAMES):
+            return True
+        # "ipl" as a standalone word
+        if re.search(r'\bipl\b', title_lower):
+            return True
+        # Short codes only match when they are isolated words/tokens
+        for code in cls._IPL_SHORT_CODES:
+            if re.search(r'\b' + re.escape(code) + r'\b', title, re.IGNORECASE):
+                return True
+        return False
 
     async def poll(self) -> list[dict]:
-        """Poll for live scores. Returns list of match dicts stored in DB."""
+        """Poll for live IPL scores only. Returns list of match dicts stored in DB."""
         matches_found = []
 
         # ── Attempt 1: ESPN Cricinfo RSS ──────────────────────────────
@@ -98,8 +121,7 @@ class ScoreAgent:
             all_matches = await fetch_cricinfo_rss()
             matches = []
             for m in all_matches:
-                title_lower = m["title"].lower()
-                if any(kw.lower() in title_lower for kw in self.IPL_KEYWORDS):
+                if self._is_ipl_match(m["title"]):
                     matches.append(m)
             if matches:
                 for m in matches:
@@ -661,6 +683,16 @@ class DataFetchAgent:
         """Return the last 3 confirmed IPL 2026 match results (as of May 14, 2026)."""
         return [
             {
+                "id": "cb_152141", "match_id": "152141",
+                "team1": "PBKS", "team2": "MI",
+                "t1_runs": 200, "t1_wickets": 8, "t1_overs": "20.0",
+                "t2_runs": 205, "t2_wickets": 4, "t2_overs": "19.3",
+                "venue": "Himachal Pradesh Cricket Association Stadium, Dharamsala",
+                "match_desc": "58th Match", "match_status": "COMPLETED",
+                "winner": "MI", "margin": "6 wickets",
+                "status": "Mumbai Indians won by 6 wkts",
+            },
+            {
                 "id": "cb_152130", "match_id": "152130",
                 "team1": "KKR", "team2": "RCB",
                 "t1_runs": 192, "t1_wickets": 4, "t1_overs": "19.6",
@@ -679,16 +711,6 @@ class DataFetchAgent:
                 "match_desc": "56th Match", "match_status": "COMPLETED",
                 "winner": "GT", "margin": "82 runs",
                 "status": "Gujarat Titans won by 82 runs",
-            },
-            {
-                "id": "cb_152108", "match_id": "152108",
-                "team1": "PBKS", "team2": "DC",
-                "t1_runs": 210, "t1_wickets": 5, "t1_overs": "20.0",
-                "t2_runs": 216, "t2_wickets": 7, "t2_overs": "19.2",
-                "venue": "Himachal Pradesh Cricket Association Stadium, Dharamsala",
-                "match_desc": "55th Match", "match_status": "COMPLETED",
-                "winner": "DC", "margin": "3 wickets",
-                "status": "Delhi Capitals won by 3 wickets",
             },
         ]
 
@@ -794,6 +816,11 @@ async def run_initial_data_fetch():
     global _initial_fetch_done
     try:
         print("[Agents] === IMMEDIATE DATA FETCH ON STARTUP ===")
+        # Purge any non-IPL matches stored in error (e.g. county cricket false-positives)
+        from database import purge_non_ipl_matches
+        removed = purge_non_ipl_matches()
+        if removed:
+            print(f"[Agents] Purged {removed} non-IPL match(es) from DB")
         # Fetch scores first
         await score_agent.poll()
         # Fetch all supplementary data
