@@ -164,7 +164,13 @@ export default function Home() {
     const match = matches.find((m) => m.id === selectedMatchId);
     if (match?.status === 'COMPLETED') {
       fetchMatchResult(selectedMatchId)
-        .then((data) => { if (data && !data.error) setMatchResult(data as MatchResult); else setMatchResult(null); })
+        .then((data) => {
+          // Validate required fields — FastAPI 404 returns {detail:...} not {error:...}
+          if (data && data.team1_code && !data.error && !data.detail)
+            setMatchResult(data as MatchResult);
+          else
+            setMatchResult(null);
+        })
         .catch(() => setMatchResult(null));
     } else {
       setMatchResult(null);

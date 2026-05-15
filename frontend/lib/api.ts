@@ -80,6 +80,6 @@ export async function fetchCompletedMatches() {
 }
 
 export async function fetchMatchResult(matchId: string) {
-  const res = await fetch(`${BASE}/api/match-result/${encodeURIComponent(matchId)}`);
+  const res = await fetch(`${BASE}/api/match-result?match_id=${encodeURIComponent(matchId)}`);
   return res.json();
 }

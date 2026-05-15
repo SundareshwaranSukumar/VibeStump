@@ -205,7 +205,7 @@ async def api_completed_matches():
     return get_completed_matches()
 
 
-@app.get("/api/match-result/{match_id}")
+@app.get("/api/match-result")
 async def api_match_result(match_id: str):
     """Get detailed result data for a specific completed match."""
     result = get_match_result(match_id)
