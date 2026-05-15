@@ -52,6 +52,7 @@ from tools import (
     search_team_info,
     search_player_info,
     search_web,
+    search_youtube_videos,
     IPL_TEAMS,
 )
 
@@ -447,40 +448,53 @@ Use the web context to make the insight accurate and current."""
 # ── Media Agent ─────────────────────────────────────────────────────
 
 class MediaAgent:
-    """Fetches REAL YouTube highlights via search. No dummy data."""
+    """Fetches REAL YouTube highlights via DDG Videos search. No YouTube API key needed."""
 
     async def fetch(self, query: str = "IPL 2026 highlights"):
-        # Attempt 1: YouTube API
+        # Attempt 1: YouTube Data API (if key configured)
         try:
             videos = await fetch_youtube_highlights(query)
             if videos:
                 for v in videos:
                     add_highlight(query, v["title"], v["video_id"], v["thumbnail"])
-                print(f"[MediaAgent] YouTube: stored {len(videos)} highlights")
+                print(f"[MediaAgent] YouTube API: stored {len(videos)} highlights")
                 return videos
         except Exception as e:
             print(f"[MediaAgent] YouTube API failed: {e}")
 
-        # Attempt 2: DuckDuckGo search for IPL highlight videos
+        # Attempt 2: DuckDuckGo Videos search — returns real YouTube video IDs
         try:
-            results = search_web(f"{query} youtube video", max_results=8)
+            videos = search_youtube_videos(query, max_results=6)
+            if videos:
+                for v in videos:
+                    add_highlight(query, v["title"], v["video_id"], v["thumbnail"])
+                print(f"[MediaAgent] DDG Videos: stored {len(videos)} highlights")
+                return videos
+        except Exception as e:
+            print(f"[MediaAgent] DDG Videos failed: {e}")
+
+        # Attempt 3: DDG text search for YouTube URLs as last resort
+        try:
+            results = search_web(f"site:youtube.com {query}", max_results=8)
             if results:
                 videos = []
                 for r in results:
-                    video_id = self._extract_youtube_id(r.get("href", ""))
-                    if video_id:
-                        videos.append({
-                            "title": r["title"],
-                            "video_id": video_id,
-                            "thumbnail": f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg",
-                        })
+                    for field in (r.get("href", ""), r.get("body", "")):
+                        video_id = self._extract_youtube_id(field)
+                        if video_id:
+                            videos.append({
+                                "title": r["title"],
+                                "video_id": video_id,
+                                "thumbnail": f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg",
+                            })
+                            break
                 if videos:
                     for v in videos:
                         add_highlight(query, v["title"], v["video_id"], v["thumbnail"])
-                    print(f"[MediaAgent] DDG: stored {len(videos)} highlight videos")
+                    print(f"[MediaAgent] DDG text: stored {len(videos)} highlights")
                     return videos
         except Exception as e:
-            print(f"[MediaAgent] DDG search failed: {e}")
+            print(f"[MediaAgent] DDG text failed: {e}")
 
         print("[MediaAgent] No new highlights found — keeping existing DB data")
         return []
@@ -898,56 +912,92 @@ def _build_stumpmind_answer(message: str, db_context: str, web_context: str) -> 
     """Build a smart conversational reply from DB + web context without Gemini."""
     msg_lower = message.lower()
 
-    # Parse db_context into sections
-    standings_lines = ""
-    results_lines = ""
-    if "\n\nRecent Results:" in db_context:
-        idx = db_context.index("\n\nRecent Results:")
-        standings_lines = db_context[:idx].replace("IPL 2026 Standings:", "").strip()
-        results_lines = db_context[idx:].replace("\n\nRecent Results:", "").strip()
-    elif db_context:
-        standings_lines = db_context.replace("IPL 2026 Standings:", "").strip()
+    # ── Parse db_context into named sections ──────────────────────────
+    def _extract_section(text: str, header: str) -> str:
+        if header not in text:
+            return ""
+        start = text.index(header) + len(header)
+        end = text.find("\n\nUpcoming" if "Standings" in header else "\n\n", start)
+        if "Standings" in header:
+            end = text.find("\n\nRecent", start)
+        chunk = text[start: end if end > start else None].strip()
+        return chunk
 
-    # Intent-based routing
-    if any(k in msg_lower for k in ["lead", "top", "first", "number one", "best team", "who is #1", "which team"]):
-        if standings_lines:
-            top_line = standings_lines.split("\n")[0].strip()
-            return f"🏆 {top_line} is currently leading IPL 2026!\n\n📊 **Full standings:**\n{standings_lines}"
+    standings_lines = _extract_section(db_context, "IPL 2026 Standings:\n")
+    results_lines = _extract_section(db_context, "Recent Results:\n")
+    upcoming_lines = _extract_section(db_context, "Upcoming Matches:\n")
 
+    # ── Greeting ────────────────────────────────────────────────────
+    if any(k in msg_lower for k in ["hello", "hi ", "hey", "greet", "good morning", "good evening", "good afternoon", "sup"]):
+        return (
+            "👋 Hey cricket fan! I'm **StumpMind**, your IPL 2026 AI assistant.\n\n"
+            "I can help you with:\n"
+            "• 📊 Points table & standings\n"
+            "• 🏆 Recent match results\n"
+            "• 📅 Upcoming fixtures\n"
+            "• 🏏 Player stats & team info\n\n"
+            "What would you like to know?"
+        )
+
+    # ── Standings ───────────────────────────────────────────────────
     if any(k in msg_lower for k in ["point", "table", "standing", "rank", "position", "leaderboard"]):
         if standings_lines:
             return f"📊 **IPL 2026 Points Table:**\n{standings_lines}"
 
-    if any(k in msg_lower for k in ["result", "won", "win", "lost", "beat", "defeat", "last match", "recent"]):
+    # ── Top team ────────────────────────────────────────────────────
+    if any(k in msg_lower for k in ["lead", "top team", "number one", "best team", "who is #1", "which team is"]):
+        if standings_lines:
+            top_line = standings_lines.split("\n")[0].strip()
+            return f"🏆 **{top_line}** is currently leading IPL 2026!\n\n📊 Full standings:\n{standings_lines}"
+
+    # ── Upcoming / Schedule ─────────────────────────────────────────
+    if any(k in msg_lower for k in ["upcoming", "next match", "schedule", "fixture", "when is", "today match", "tomorrow"]):
+        if upcoming_lines:
+            return f"📅 **Upcoming IPL 2026 Matches:**\n{upcoming_lines}"
+        return "📅 Check the **Schedule** tab in the dashboard for the latest fixtures!"
+
+    # ── Prediction (check before results to avoid "win" false-positive) ─
+    if any(k in msg_lower for k in ["predict", "who will win", "will win", "favourite", "favorite", "odds", "who wins"]):
+        if standings_lines:
+            top = standings_lines.split("\n")[0].strip()
+            team_code = top.split(".")[1].strip().split(":")[0].strip() if "." in top else "RCB"
+            return (
+                f"🔮 Based on current form, **{team_code}** looks like a strong contender! "
+                "But IPL is unpredictable — anything can happen.\n\n"
+                f"📊 **Current standings:**\n{standings_lines}"
+            )
+
+    # ── Results ─────────────────────────────────────────────────────
+    if any(k in msg_lower for k in ["result", "won", "who won", "lost", "beat", "defeat", "last match", "recent match"]):
         if results_lines:
             return f"🏆 **Recent IPL 2026 Results:**\n{results_lines}"
         if standings_lines:
             return f"📊 **IPL 2026 Standings:**\n{standings_lines}"
 
-    if any(k in msg_lower for k in ["squad", "playing xi", "roster", "who plays", "lineup"]):
-        return (
-            "🏏 Check the **Teams** section in the dashboard for full squads and playing XI! "
-            "I can also answer questions about IPL 2026 standings, results, and player statistics."
-        )
+    # ── Squad / Teams ───────────────────────────────────────────────
+    if any(k in msg_lower for k in ["squad", "playing xi", "roster", "lineup", "team squad"]):
+        return "🏏 Visit the **Teams** tab in the dashboard for full squad lists and player details!"
 
-    # Default: show all available DB data
+    # ── Default: combine all available data ─────────────────────────
     parts = []
     if standings_lines:
         parts.append(f"📊 **IPL 2026 Standings:**\n{standings_lines}")
     if results_lines:
         parts.append(f"🏆 **Recent Results:**\n{results_lines}")
+    if upcoming_lines:
+        parts.append(f"📅 **Upcoming:**\n{upcoming_lines}")
 
     if not parts and web_context:
-        first = web_context.split("\n")[0].strip().lstrip("• ")
-        if ": " in first:
-            src, body = first.split(": ", 1)
+        first_line = web_context.split("\n")[0].strip().lstrip("• ")
+        if ": " in first_line:
+            src, body = first_line.split(": ", 1)
             parts.append(f"🌐 **{src}:**\n{body[:300]}")
         else:
-            parts.append(f"🌐 {first[:300]}")
+            parts.append(f"🌐 {first_line[:300]}")
 
     if parts:
         return "\n\n".join(parts)
-    return "🏏 Ask me about IPL 2026 standings, recent results, player stats, or match predictions!"
+    return "🏏 Ask me about IPL 2026 standings, results, upcoming matches, or player stats!"
 
 
 def chat_with_stumpmind(message: str, history: list[dict]) -> str:
@@ -966,7 +1016,7 @@ def chat_with_stumpmind(message: str, history: list[dict]) -> str:
     except Exception as e:
         print(f"[StumpMind] DDG search failed: {e}")
 
-    # ── Fetch live DB context: standings + recent results ────────────
+    # ── Fetch live DB context: standings + recent results + upcoming ─
     db_context = ""
     try:
         conn = get_conn()
@@ -975,7 +1025,7 @@ def chat_with_stumpmind(message: str, history: list[dict]) -> str:
         ).fetchall()
         if standings:
             rows = [
-                f"  {i+1}. {dict(r)['team']}: {dict(r)['pts']} pts "
+                f"{i+1}. {dict(r)['team']}: {dict(r)['pts']} pts "
                 f"({dict(r)['won']}W/{dict(r)['lost']}L, NRR {dict(r)['nrr']})"
                 for i, r in enumerate(standings)
             ]
@@ -987,11 +1037,24 @@ def chat_with_stumpmind(message: str, history: list[dict]) -> str:
         ).fetchall()
         if recent:
             result_strs = [
-                f"  {dict(r)['match_no']}: {dict(r)['winner']} won "
+                f"{dict(r)['match_no']}: {dict(r)['winner']} won "
                 f"({dict(r)['team1_code']} vs {dict(r)['team2_code']}, {dict(r)['margin']})"
                 for r in recent
             ]
             db_context += "\n\nRecent Results:\n" + "\n".join(result_strs)
+
+        try:
+            upcoming = conn.execute(
+                "SELECT match_no, team1, team2, date, time FROM upcoming_matches ORDER BY date, time LIMIT 3"
+            ).fetchall()
+            if upcoming:
+                upcoming_strs = [
+                    f"{dict(u)['match_no']}: {dict(u)['team1']} vs {dict(u)['team2']} — {dict(u).get('date','TBD')} {dict(u).get('time','')}"
+                    for u in upcoming
+                ]
+                db_context += "\n\nUpcoming Matches:\n" + "\n".join(upcoming_strs)
+        except Exception:
+            pass  # upcoming_matches table may not exist yet
     except Exception as e:
         print(f"[StumpMind] DB context fetch failed: {e}")
 

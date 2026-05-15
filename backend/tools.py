@@ -52,6 +52,40 @@ def search_web(query: str, max_results: int = 5) -> list[dict]:
         return []
 
 
+def search_youtube_videos(query: str, max_results: int = 6) -> list[dict]:
+    """Search for YouTube highlight videos using DuckDuckGo Videos (no API key needed).
+    Returns list of {title, video_id, thumbnail} dicts with real YouTube IDs."""
+    try:
+        ddgs = _get_ddgs()
+        if not ddgs:
+            return []
+        raw = list(ddgs.videos(keywords=query, max_results=max_results * 2))
+        videos = []
+        for r in raw:
+            url = r.get("content", "")
+            m = re.search(
+                r'(?:youtube\.com/(?:watch\?v=|embed/)|youtu\.be/)([a-zA-Z0-9_-]{11})',
+                url,
+            )
+            if m:
+                video_id = m.group(1)
+                thumbnail = (
+                    (r.get("images") or {}).get("medium")
+                    or f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"
+                )
+                videos.append({
+                    "title": r.get("title", query),
+                    "video_id": video_id,
+                    "thumbnail": thumbnail,
+                })
+            if len(videos) >= max_results:
+                break
+        return videos
+    except Exception as e:
+        print(f"[DDG Videos] Search failed: {e}")
+        return []
+
+
 def search_ipl_scores() -> list[dict]:
     """Search DuckDuckGo for latest IPL live scores and parse results."""
     results = search_web("IPL 2026 live score today cricket", max_results=8)
