@@ -1,7 +1,8 @@
 FROM node:20-slim AS builder
 WORKDIR /app
 COPY package.json ./
-RUN npm install
+# Install deps; then explicitly add the glibc Linux oxide binary needed for Tailwind v4 in Docker
+RUN npm install && npm install @tailwindcss/oxide-linux-x64-gnu --no-save
 COPY . .
 RUN npm run build
 

@@ -3,6 +3,7 @@
 /* ── Light Theme (default) ──────────────────────────────────────────── */
 :root,
 [data-theme="light"] {
+  /* Legacy color tokens (preserved for existing components) */
   --color-primary: 37, 99, 235;
   --color-bg: 248, 250, 252;
   --color-bg-hex: #f8fafc;
@@ -17,10 +18,35 @@
   --color-border: 226, 232, 240;
   --glass-bg: rgba(255, 255, 255, 0.7);
   --glass-border: rgba(15, 23, 42, 0.06);
+
+  /* Material 3 color tokens — light */
+  --md-sys-color-primary: #1565C0;
+  --md-sys-color-on-primary: #FFFFFF;
+  --md-sys-color-primary-container: #D3E4FF;
+  --md-sys-color-on-primary-container: #001848;
+  --md-sys-color-secondary: #6B548E;
+  --md-sys-color-on-secondary: #FFFFFF;
+  --md-sys-color-secondary-container: #ECDCFF;
+  --md-sys-color-on-secondary-container: #250048;
+  --md-sys-color-tertiary: #006D3B;
+  --md-sys-color-on-tertiary: #FFFFFF;
+  --md-sys-color-error: #BA1A1A;
+  --md-sys-color-on-error: #FFFFFF;
+  --md-sys-color-background: #F8FAFC;
+  --md-sys-color-on-background: #0F172A;
+  --md-sys-color-surface: #F1F5F9;
+  --md-sys-color-on-surface: #0F172A;
+  --md-sys-color-surface-variant: #E2E8F0;
+  --md-sys-color-on-surface-variant: #475569;
+  --md-sys-color-outline: #CBD5E1;
+  --md-sys-color-outline-variant: #E2E8F0;
+  --md-sys-color-shadow: rgba(0, 0, 0, 0.12);
+  --md-sys-color-surface-tint: #1565C0;
 }
 
 /* ── Dark Theme ───────────────────────────────────────────────────── */
 [data-theme="dark"] {
+  /* Legacy color tokens */
   --color-primary: 0, 240, 255;
   --color-bg: 2, 6, 23;
   --color-bg-hex: #020617;
@@ -35,6 +61,30 @@
   --color-border: 51, 65, 85;
   --glass-bg: rgba(15, 23, 42, 0.6);
   --glass-border: rgba(248, 250, 252, 0.06);
+
+  /* Material 3 color tokens — dark */
+  --md-sys-color-primary: #A8C8FF;
+  --md-sys-color-on-primary: #00307A;
+  --md-sys-color-primary-container: #0045A8;
+  --md-sys-color-on-primary-container: #D3E4FF;
+  --md-sys-color-secondary: #D3BCFF;
+  --md-sys-color-on-secondary: #3A1F5E;
+  --md-sys-color-secondary-container: #523B76;
+  --md-sys-color-on-secondary-container: #ECDCFF;
+  --md-sys-color-tertiary: #74DBA6;
+  --md-sys-color-on-tertiary: #003920;
+  --md-sys-color-error: #FFB4AB;
+  --md-sys-color-on-error: #690005;
+  --md-sys-color-background: #020617;
+  --md-sys-color-on-background: #F8FAFC;
+  --md-sys-color-surface: #0F172A;
+  --md-sys-color-on-surface: #F8FAFC;
+  --md-sys-color-surface-variant: #1E293B;
+  --md-sys-color-on-surface-variant: #94A3B8;
+  --md-sys-color-outline: #334155;
+  --md-sys-color-outline-variant: #1E293B;
+  --md-sys-color-shadow: rgba(0, 0, 0, 0.5);
+  --md-sys-color-surface-tint: #A8C8FF;
 }
 
 /* ── Base ──────────────────────────────────────────────────────────── */
@@ -191,3 +241,83 @@ body {
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* ── VibeStump Signature Gradient ────────────────────────────────── */
+.vibe-gradient {
+  background: linear-gradient(135deg, #00f0ff 0%, #a855f7 50%, #f97316 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.vibe-gradient-bg {
+  background: linear-gradient(135deg, #00f0ff 0%, #a855f7 50%, #f97316 100%);
+}
+
+/* ── Hardware Acceleration Utility ──────────────────────────────── */
+.hw-accel {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* ── 4-Screen SPA Transitions ───────────────────────────────────── */
+.screen-enter {
+  animation: screen-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes screen-in {
+  from { opacity: 0; transform: translateY(24px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Scrolling Marquee ──────────────────────────────────────────── */
+@keyframes marquee-scroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee-scroll 24s linear infinite;
+}
+
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+/* ── Isometric stadium perspective containers ───────────────────── */
+.perspective-longon {
+  perspective: 800px;
+  transform: rotateX(25deg) rotateY(-5deg);
+  will-change: transform;
+}
+
+.perspective-midwicket {
+  perspective: 800px;
+  transform: rotateX(15deg) rotateY(20deg);
+  will-change: transform;
+}
+
+.perspective-topdown {
+  perspective: 1200px;
+  transform: rotateX(55deg) rotateY(0deg);
+  will-change: transform;
+}
+
+/* ── Bezier emoji float path ────────────────────────────────────── */
+@keyframes float-up {
+  0%   { transform: translateY(0)      translateX(0) scale(0.4); opacity: 1; }
+  40%  { transform: translateY(-60px)  translateX(var(--drift, 20px)) scale(1.2); opacity: 1; }
+  100% { transform: translateY(-150px) translateX(var(--drift, 40px)) scale(0.8); opacity: 0; }
+}
+
+.emoji-float {
+  animation: float-up 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* ── M3 Surface elevation shadows ───────────────────────────────── */
+.md-surface-1 { box-shadow: 0 1px 3px var(--md-sys-color-shadow), 0 1px 2px var(--md-sys-color-shadow); }
+.md-surface-2 { box-shadow: 0 3px 6px var(--md-sys-color-shadow), 0 2px 4px var(--md-sys-color-shadow); }
+.md-surface-3 { box-shadow: 0 10px 20px var(--md-sys-color-shadow), 0 6px 6px var(--md-sys-color-shadow); }

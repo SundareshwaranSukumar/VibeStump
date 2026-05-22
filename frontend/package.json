@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@tailwindcss/oxide": "^4.3.0",
-    "@tailwindcss/oxide-linux-x64-gnu": "^4.3.0",
     "autoprefixer": "^10.5.0",
     "framer-motion": "^12.38.0",
     "lucide-react": "^0.400.0",
